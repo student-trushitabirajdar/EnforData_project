@@ -1,4 +1,6 @@
 # ENFOR DATA - Git Ignore File
+.kiro/*
+
 
 # Dependencies
 node_modules/
@@ -117,6 +119,11 @@ backend/enfor-backend.exe
 backend/*.exe
 backend/tmp/
 backend/vendor/
+backend/main
+backend/setup.sh
+backend/Dockerfile
+backend/.dockerignore
+backend/Makefile
 
 # Database files
 *.db
@@ -225,6 +232,12 @@ test-*.json
 # Documentation build
 docs/_build/
 docs/.doctrees/
+docs/
+
+# Root level markdown files (keep only in .kiro/)
+/README.md
+/CONTRIBUTING.md
+/INTEGRATION_SUMMARY.md
 
 # Jupyter Notebook
 .ipynb_checkpoints

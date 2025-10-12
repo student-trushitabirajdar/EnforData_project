@@ -46,6 +46,45 @@ export interface AuthResponse {
   };
 }
 
+export interface CreatePropertyRequest {
+  title: string;
+  type: 'apartment' | 'house' | 'commercial' | 'plot';
+  listing_type: 'sale' | 'rent';
+  price: number;
+  area: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  location: string;
+  address: string;
+  city: string;
+  state: string;
+  description: string;
+  amenities: string[];
+}
+
+export interface Property {
+  id: string;
+  title: string;
+  type: 'apartment' | 'house' | 'commercial' | 'plot';
+  listing_type: 'sale' | 'rent';
+  price: number;
+  area: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  location: string;
+  address: string;
+  city: string;
+  state: string;
+  description: string;
+  amenities: string[];
+  status: 'available' | 'sold' | 'rented' | 'under_negotiation';
+  broker_id: string;
+  broker_name?: string;
+  broker_city?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -125,6 +164,18 @@ class ApiClient {
       method: 'POST',
       headers: {}, // Don't set Content-Type for FormData
       body: formData,
+    });
+  }
+
+  // Property endpoints
+  async getProperties(): Promise<ApiResponse<Property[]>> {
+    return this.request<Property[]>('/properties');
+  }
+
+  async createProperty(propertyData: CreatePropertyRequest): Promise<ApiResponse<Property>> {
+    return this.request<Property>('/properties', {
+      method: 'POST',
+      body: JSON.stringify(propertyData),
     });
   }
 }

@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { apiClient, SignupRequest } from '../services/api';
+import { apiClient } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  register: (userData: SignupRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (userData: any) => Promise<void>;
   loading: boolean;
 }
 
@@ -21,36 +21,65 @@ export const useAuth = () => {
   return context;
 };
 
+// Mock users for fallback when backend is not available
+const mockUsers: Array<{
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  firm_name: string;
+  city: string;
+  state: string;
+}> = [
+  {
+    email: 'broker@example.com',
+    password: 'password123',
+    first_name: 'John',
+    last_name: 'Smith',
+    role: 'broker',
+    firm_name: 'Smith Properties',
+    city: 'Mumbai',
+    state: 'Maharashtra'
+  },
+  {
+    email: 'builder@example.com',
+    password: 'password123',
+    first_name: 'Sarah',
+    last_name: 'Johnson',
+    role: 'channel_partner',
+    firm_name: 'Johnson Builders',
+    city: 'Delhi',
+    state: 'Delhi'
+  }
+];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session and validate with backend
-    const initializeAuth = async () => {
+    // Check for existing session and validate token
+    const checkAuth = async () => {
       const token = localStorage.getItem('enfor_token');
       if (token) {
         try {
           const response = await apiClient.getMe();
-          const backendUser = response.data;
-          
-          if (backendUser) {
-            // Convert backend user format to frontend User type
-            const user: User = {
-              id: backendUser.id,
-              email: backendUser.email,
-              name: `${backendUser.first_name} ${backendUser.last_name}`,
-              phone: '', // Will be populated from backend if needed
-              role: backendUser.role as 'broker' | 'channel_partner' | 'admin',
-              city: backendUser.city,
-              state: backendUser.state,
-              company_name: backendUser.firm_name,
-              is_verified: backendUser.is_verified,
-              created_at: backendUser.created_at,
-              updated_at: backendUser.created_at // Backend doesn't return updated_at in this response
+          if (response.data) {
+            const userData: User = {
+              id: response.data.id,
+              email: response.data.email,
+              name: `${response.data.first_name} ${response.data.last_name}`,
+              phone: '', // Will be populated from backend
+              role: response.data.role as 'broker' | 'channel_partner' | 'admin',
+              city: response.data.city,
+              state: response.data.state,
+              company_name: response.data.firm_name,
+              is_verified: response.data.is_verified,
+              created_at: response.data.created_at,
+              updated_at: response.data.created_at
             };
-          
-            setUser(user);
+            setUser(userData);
           }
         } catch (error) {
           // Token is invalid, clear it
@@ -61,50 +90,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     };
 
-    initializeAuth();
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
       const response = await apiClient.login({ email, password });
-      const authData = response.data;
       
-      if (!authData) {
-        throw new Error('Invalid response from server');
+      if (response.data) {
+        // Store token
+        localStorage.setItem('enfor_token', response.data.token);
+        
+        // Create user object
+        const userData: User = {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: `${response.data.user.first_name} ${response.data.user.last_name}`,
+          phone: '', // Will be populated from backend
+          role: response.data.user.role as 'broker' | 'channel_partner' | 'admin',
+          city: response.data.user.city,
+          state: response.data.user.state,
+          company_name: response.data.user.firm_name,
+          is_verified: response.data.user.is_verified,
+          created_at: response.data.user.created_at,
+          updated_at: response.data.user.created_at
+        };
+        
+        setUser(userData);
+        localStorage.setItem('enfor_user', JSON.stringify(userData));
       }
-      
-      const { token, user: backendUser } = authData;
-      
-      // Store token
-      localStorage.setItem('enfor_token', token);
-      
-      // Convert backend user format to frontend User type
-      const user: User = {
-        id: backendUser.id,
-        email: backendUser.email,
-        name: `${backendUser.first_name} ${backendUser.last_name}`,
-        phone: '', // Will be populated from backend if needed
-        role: backendUser.role as 'broker' | 'channel_partner' | 'admin',
-        city: backendUser.city,
-        state: backendUser.state,
-        company_name: backendUser.firm_name,
-        is_verified: backendUser.is_verified,
-        created_at: backendUser.created_at,
-        updated_at: backendUser.created_at
-      };
-      
-      setUser(user);
-      localStorage.setItem('enfor_user', JSON.stringify(user));
-    } catch (error) {
-      throw new Error('Invalid credentials');
+    } catch (error: any) {
+      throw new Error(error.message || 'Login failed');
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       await apiClient.logout();
     } catch (error) {
-      // Even if logout fails on backend, clear local state
       console.error('Logout error:', error);
     } finally {
       setUser(null);
@@ -113,39 +136,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userData: SignupRequest): Promise<void> => {
+  const register = async (userData: any): Promise<void> => {
     try {
       const response = await apiClient.signup(userData);
-      const authData = response.data;
       
-      if (!authData) {
-        throw new Error('Invalid response from server');
+      if (response.data) {
+        // Store token
+        localStorage.setItem('enfor_token', response.data.token);
+        
+        // Create user object
+        const newUser: User = {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: `${response.data.user.first_name} ${response.data.user.last_name}`,
+          phone: '', // Will be populated from backend
+          role: response.data.user.role as 'broker' | 'channel_partner' | 'admin',
+          city: response.data.user.city,
+          state: response.data.user.state,
+          company_name: response.data.user.firm_name,
+          is_verified: response.data.user.is_verified,
+          created_at: response.data.user.created_at,
+          updated_at: response.data.user.created_at
+        };
+        
+        setUser(newUser);
+        localStorage.setItem('enfor_user', JSON.stringify(newUser));
       }
-      
-      const { token, user: backendUser } = authData;
-      
-      // Store token
-      localStorage.setItem('enfor_token', token);
-      
-      // Convert backend user format to frontend User type
-      const user: User = {
-        id: backendUser.id,
-        email: backendUser.email,
-        name: `${backendUser.first_name} ${backendUser.last_name}`,
-        phone: '', // Will be populated from backend if needed
-        role: backendUser.role as 'broker' | 'channel_partner' | 'admin',
-        city: backendUser.city,
-        state: backendUser.state,
-        company_name: backendUser.firm_name,
-        is_verified: backendUser.is_verified,
-        created_at: backendUser.created_at,
-        updated_at: backendUser.created_at
-      };
-      
-      setUser(user);
-      localStorage.setItem('enfor_user', JSON.stringify(user));
-    } catch (error) {
-      throw error; // Re-throw to let the component handle the error
+    } catch (error: any) {
+      throw new Error(error.message || 'Registration failed');
     }
   };
 

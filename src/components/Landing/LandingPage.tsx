@@ -125,20 +125,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       </header>
 
       {/* Hero Section */}
-      <section 
-        className="relative py-20 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: 'url(/image_1.jpg)',
-        }}
-      >
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-5xl font-bold text-white mb-6">
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">
               Transform Your Real Estate Business
             </h1>
-            <p className="text-xl text-gray-200 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
               The ultimate business management platform for real estate brokers and builders. 
               Manage properties, clients, and grow your network with powerful automation tools.
             </p>
@@ -150,14 +143,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </button>
-              <button className="bg-white border border-gray-300 text-gray-700 px-8 py-4 rounded-lg hover:bg-gray-50 transition-colors text-lg font-semibold">
+              <button className="border border-gray-300 text-gray-700 px-8 py-4 rounded-lg hover:bg-gray-50 transition-colors text-lg font-semibold">
                 Watch Demo
               </button>
             </div>
             
             {/* Role-based Sign Up Options */}
             <div className="max-w-4xl mx-auto">
-              <h3 className="text-2xl font-semibold text-white mb-6">Choose Your Role</h3>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6">Choose Your Role</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Broker Sign Up */}
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 hover:shadow-xl transition-shadow">
@@ -243,11 +236,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
               
               <div className="text-center mt-8">
-                <p className="text-gray-200">
+                <p className="text-gray-600">
                   Already have an account?{' '}
                   <button
                     onClick={onGetStarted}
-                    className="text-blue-300 hover:text-blue-200 font-semibold"
+                    className="text-blue-600 hover:text-blue-700 font-semibold"
                   >
                     Sign In Here
                   </button>
@@ -273,13 +266,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20" style={{ backgroundColor: '#F8F4F8' }}>
+      <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Everything You Need to Grow Your Business
             </h2>
-            <p className="text-xl text-gray-700 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Comprehensive tools designed specifically for real estate professionals to streamline operations and maximize revenue.
             </p>
           </div>

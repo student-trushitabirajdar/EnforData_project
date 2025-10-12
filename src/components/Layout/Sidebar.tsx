@@ -78,21 +78,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, currentSection, onSectionChan
     <>
       {/* Backdrop for mobile */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => {}}
+          onClick={() => onSectionChange(currentSection)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed left-0 top-16 h-full border-r border-gray-200 z-50 transition-transform duration-300
+        fixed left-0 top-16 bottom-0 bg-[#00004d] z-50 transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:z-auto
-        w-56
-      `} style={{ backgroundColor: '#03045E' }}>
+        lg:translate-x-0
+        w-60
+      `}>
         <div className="h-full overflow-y-auto py-4">
-          <nav className="space-y-2 px-4">
+          <nav className="space-y-1 px-3">
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -100,17 +100,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, currentSection, onSectionChan
                   key={item.id}
                   onClick={() => onSectionChange(item.id)}
                   className={`
-                    w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-colors duration-200
+                    w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors duration-200
                     ${currentSection === item.id
-                      ? 'bg-white text-gray-900 border-r-2 border-white'
-                      : 'text-gray-200 hover:bg-blue-600 hover:text-white'
+                      ? 'bg-white text-gray-900'
+                      : 'text-white hover:bg-blue-900'
                     }
                   `}
                 >
-                  <Icon className={`h-5 w-5 mr-3 ${
-                    currentSection === item.id ? 'text-gray-900' : 'text-gray-300'
-                  }`} />
-                  <span className="font-medium text-sm">{item.label}</span>
+                  <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                  <span className="font-normal text-sm">{item.label}</span>
                 </button>
               );
             })}

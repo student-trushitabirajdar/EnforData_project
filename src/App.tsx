@@ -10,6 +10,9 @@ import PropertiesView from './components/Properties/PropertiesView';
 import WhatsAppView from './components/WhatsApp/WhatsAppView';
 import ClientsView from './components/Clients/ClientsView';
 import AppointmentsView from './components/Appointments/AppointmentsView';
+import BrokerNetworkView from './components/Network/BrokerNetworkView';
+import BusinessPostsView from './components/BusinessPosts/BusinessPostsView';
+import MarketingView from './components/Marketing/MarketingView';
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -17,6 +20,11 @@ const AppContent: React.FC = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [currentSection, setCurrentSection] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleSectionChange = (section: string) => {
+    setCurrentSection(section);
+    setIsSidebarOpen(false);
+  };
 
   // Mock dashboard stats
   const mockStats = {
@@ -139,6 +147,12 @@ const AppContent: React.FC = () => {
         return <ClientsView />;
       case 'appointments':
         return <AppointmentsView />;
+      case 'network':
+        return <BrokerNetworkView />;
+      case 'business-posts':
+        return <BusinessPostsView />;
+      case 'marketing':
+        return <MarketingView />;
       default:
         return (
           <div className="text-center py-12">
@@ -157,23 +171,21 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
+    <div className="min-h-screen bg-gray-50">
       <Navbar
         onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
       />
       
-      <div className="flex pt-16 w-full">
+      <div className="flex pt-16 bg-gray-100">
         <Sidebar
           isOpen={isSidebarOpen}
           currentSection={currentSection}
-          onSectionChange={setCurrentSection}
+          onSectionChange={handleSectionChange}
         />
-        
-        <main className="flex-1 lg:ml-56 p-0 w-full">
-          <div className="w-full -ml-20">
-            {renderCurrentSection()}
-          </div>
+
+        <main className="flex-1 lg:ml-60 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen">
+          {renderCurrentSection()}
         </main>
       </div>
     </div>

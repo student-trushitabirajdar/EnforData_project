@@ -40,30 +40,28 @@ const StatsCard: React.FC<StatsCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 hover:shadow-md transition-shadow duration-200 min-h-[120px]">
-      <div className="flex items-center justify-between h-full">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow transition-shadow duration-200">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm lg:text-base font-medium text-gray-600">{title}</h3>
-            <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-              <Icon className={`h-6 w-6 ${iconColorClasses[color]}`} />
-            </div>
-          </div>
-          <div className="flex items-baseline">
-            <p className="text-3xl lg:text-4xl font-bold text-gray-900">{value}</p>
-            {trend && (
-              <span className={`ml-3 text-sm lg:text-base font-medium ${
-                trend.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {trend.isPositive ? '+' : '-'}{Math.abs(trend.value)}%
-              </span>
-            )}
-          </div>
-          {subtitle && (
-            <p className="text-sm lg:text-base text-gray-500 mt-2">{subtitle}</p>
-          )}
+          <h3 className="text-sm font-normal text-gray-600 mb-1">{title}</h3>
+        </div>
+        <div className={`p-2.5 rounded-lg ${colorClasses[color]}`}>
+          <Icon className={`h-5 w-5 ${iconColorClasses[color]}`} />
         </div>
       </div>
+      <div className="flex items-baseline gap-2">
+        <p className="text-3xl font-bold text-gray-900">{value}</p>
+        {trend && (
+          <span className={`text-sm font-medium ${
+            trend.isPositive ? 'text-green-600' : 'text-red-600'
+          }`}>
+            {trend.isPositive ? '+' : ''}{trend.value}%
+          </span>
+        )}
+      </div>
+      {subtitle && (
+        <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
+      )}
     </div>
   );
 };

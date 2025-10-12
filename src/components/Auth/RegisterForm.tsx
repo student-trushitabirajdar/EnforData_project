@@ -32,6 +32,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { register } = useAuth();
 
@@ -48,32 +49,56 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setFieldErrors({});
 
     // Validation
+    const errors: Record<string, string> = {};
+
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
+      errors.confirmPassword = 'Passwords do not match';
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setIsLoading(false);
-      return;
+      errors.password = 'Password must be at least 6 characters long';
     }
 
     // Validate required fields
-    const requiredFields = [
-      'firmName', 'firstName', 'lastName', 'dateOfBirth', 'whatsappNumber',
-      'address', 'location', 'city', 'state', 'postalCode', 'email', 'password'
-    ];
+    const requiredFields: Record<string, string> = {
+      firmName: 'Firm Name',
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      dateOfBirth: 'Date of Birth',
+      whatsappNumber: 'WhatsApp Number',
+      address: 'Address',
+      location: 'Location',
+      city: 'City',
+      state: 'State',
+      postalCode: 'Postal Code',
+      email: 'Email',
+      password: 'Password'
+    };
 
-    for (const field of requiredFields) {
+    for (const [field, label] of Object.entries(requiredFields)) {
       if (!formData[field as keyof typeof formData]) {
-        setError(`${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`);
-        setIsLoading(false);
-        return;
+        errors[field] = `${label} is required`;
       }
+    }
+
+    // Email validation
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Phone validation (basic)
+    if (formData.whatsappNumber && !/^\+?[\d\s-]{10,}$/.test(formData.whatsappNumber)) {
+      errors.whatsappNumber = 'Please enter a valid phone number';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError('Please fix the errors below');
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -98,10 +123,33 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
 
       await register(userData);
       
-      // Show success message and redirect to login
-      alert('Registration successful! You are now logged in.');
+      // Registration successful - user is now logged in automatically
+      // No need to switch to login form
       
     } catch (err: any) {
+      // Parse backend validation errors
+      if (err.message && err.message.includes(':')) {
+        const parts = err.message.split(':');
+        const fieldName = parts[0].trim().toLowerCase().replace(/\s+/g, '_');
+        const errorMsg = parts.slice(1).join(':').trim();
+        
+        // Map backend field names to form field names
+        const fieldMap: Record<string, string> = {
+          'email': 'email',
+          'password': 'password',
+          'whatsapp_number': 'whatsappNumber',
+          'first_name': 'firstName',
+          'last_name': 'lastName',
+          'firm_name': 'firmName',
+          'date_of_birth': 'dateOfBirth',
+          'postal_code': 'postalCode'
+        };
+        
+        const mappedField = fieldMap[fieldName];
+        if (mappedField) {
+          setFieldErrors({ [mappedField]: errorMsg });
+        }
+      }
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -109,10 +157,23 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const getInputClassName = (fieldName: string, baseClass: string) => {
+    return `${baseClass} ${fieldErrors[fieldName] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`;
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,10 +284,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             name="firmName"
             value={formData.firmName}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={getInputClassName('firmName', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
             placeholder="Enter your firm name"
             required
           />
+          {fieldErrors.firmName && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.firmName}</p>
+          )}
         </div>
 
         {/* Name Fields */}
@@ -241,10 +305,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('firstName', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="First name"
               required
             />
+            {fieldErrors.firstName && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.firstName}</p>
+            )}
           </div>
           <div>
             <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,10 +323,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('lastName', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="Last name"
               required
             />
+            {fieldErrors.lastName && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.lastName}</p>
+            )}
           </div>
         </div>
 
@@ -274,9 +344,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             name="dateOfBirth"
             value={formData.dateOfBirth}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={getInputClassName('dateOfBirth', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
             required
           />
+          {fieldErrors.dateOfBirth && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.dateOfBirth}</p>
+          )}
         </div>
 
         {/* Contact Numbers */}
@@ -293,10 +366,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="whatsappNumber"
               value={formData.whatsappNumber}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('whatsappNumber', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="+91 9876543210"
               required
             />
+            {fieldErrors.whatsappNumber && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.whatsappNumber}</p>
+            )}
           </div>
 
           <div>
@@ -309,9 +385,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="alternativeNumber"
               value={formData.alternativeNumber}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('alternativeNumber', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="+91 9876543211"
             />
+            {fieldErrors.alternativeNumber && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.alternativeNumber}</p>
+            )}
           </div>
 
           <div>
@@ -324,9 +403,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="foreignNumber"
               value={formData.foreignNumber}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('foreignNumber', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="+1 234 567 8900"
             />
+            {fieldErrors.foreignNumber && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.foreignNumber}</p>
+            )}
           </div>
         </div>
 
@@ -344,10 +426,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               value={formData.address}
               onChange={handleChange}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('address', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="Enter your complete address"
               required
             />
+            {fieldErrors.address && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.address}</p>
+            )}
           </div>
 
           <div>
@@ -360,10 +445,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               name="location"
               value={formData.location}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={getInputClassName('location', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
               placeholder="Area/Locality"
               required
             />
+            {fieldErrors.location && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.location}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -377,10 +465,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={getInputClassName('city', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
                 placeholder="City"
                 required
               />
+              {fieldErrors.city && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.city}</p>
+              )}
             </div>
 
             <div>
@@ -392,7 +483,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={getInputClassName('state', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
                 required
               >
                 <option value="">Select State</option>
@@ -400,6 +491,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                   <option key={state} value={state}>{state}</option>
                 ))}
               </select>
+              {fieldErrors.state && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.state}</p>
+              )}
             </div>
 
             <div>
@@ -412,10 +506,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 name="postalCode"
                 value={formData.postalCode}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={getInputClassName('postalCode', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
                 placeholder="400001"
                 required
               />
+              {fieldErrors.postalCode && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.postalCode}</p>
+              )}
             </div>
           </div>
         </div>
@@ -477,10 +574,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={getInputClassName('email', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent')}
             placeholder="your@email.com"
             required
           />
+          {fieldErrors.email && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+          )}
         </div>
 
         {/* Password Fields */}
@@ -496,7 +596,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                className={getInputClassName('password', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-10')}
                 placeholder="Create password"
                 required
               />
@@ -508,6 +608,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">Minimum 6 characters</p>
           </div>
 
           <div>
@@ -521,7 +625,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                className={getInputClassName('confirmPassword', 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-10')}
                 placeholder="Confirm password"
                 required
               />
@@ -533,6 +637,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {fieldErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+            )}
           </div>
         </div>
 

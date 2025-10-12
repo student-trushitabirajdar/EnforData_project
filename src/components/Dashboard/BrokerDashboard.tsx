@@ -102,15 +102,15 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
   };
 
   return (
-    <div className="space-y-3 w-full pl-0 pr-0 -ml-12" style={{ backgroundColor: '#e6f1fd' }}>
+    <div className="space-y-4 sm:space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl text-white p-3 lg:p-4 w-full ml-12">
-        <h1 className="text-xl lg:text-2xl font-bold mb-1">Welcome back, Broker!</h1>
-        <p className="text-blue-100 text-sm lg:text-base">Manage your properties, clients, and grow your real estate business</p>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg sm:rounded-xl text-white p-4 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-bold mb-2">Welcome back, Broker!</h1>
+        <p className="text-sm sm:text-base text-blue-100">Manage your properties, clients, and grow your real estate business</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-1.5 w-full ml-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatsCard
           title="Total Properties"
           value={stats.totalProperties}
@@ -144,16 +144,16 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
       </div>
 
       {/* Client Distribution */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-1.5 w-full ml-12">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[300px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Clients by Type</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Clients by Type</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                <span className="text-gray-700">Buyers</span>
+                <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 flex-shrink-0"></div>
+                <span className="text-sm sm:text-base text-gray-700">Buyers</span>
               </div>
-              <span className="font-semibold text-gray-900">{stats.clientsByType.buyers}</span>
+              <span className="text-sm sm:text-base font-semibold text-gray-900">{stats.clientsByType.buyers}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -179,8 +179,8 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[300px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Properties by Status</h3>
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Properties by Status</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -215,11 +215,11 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
       </div>
 
       {/* Appointments and Activity */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-1.5 w-full ml-12">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[350px]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Today's Appointments</h3>
-            <TrendingUp className="h-6 w-6 text-green-500" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Today's Appointments</h3>
+            <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <div className="space-y-3">
             {upcomingAppointments.map((appointment) => (
@@ -237,8 +237,8 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[350px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recent Activity</h3>
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
           <div className="space-y-3">
             {recentActivity.map((activity) => (
               <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
@@ -257,95 +257,6 @@ const BrokerDashboard: React.FC<BrokerDashboardProps> = ({ stats }) => {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Content Section to utilize full width */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-1.5 w-full ml-12">
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[300px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h3>
-          <div className="space-y-3">
-            <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-              <div className="flex items-center">
-                <Building className="h-5 w-5 text-blue-600 mr-3" />
-                <span className="font-medium text-gray-900">Add New Property</span>
-              </div>
-            </button>
-            <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-green-600 mr-3" />
-                <span className="font-medium text-gray-900">Add New Client</span>
-              </div>
-            </button>
-            <button className="w-full text-left p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors">
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 text-orange-600 mr-3" />
-                <span className="font-medium text-gray-900">Schedule Appointment</span>
-              </div>
-            </button>
-            <button className="w-full text-left p-3 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors">
-              <div className="flex items-center">
-                <MessageSquare className="h-5 w-5 text-teal-600 mr-3" />
-                <span className="font-medium text-gray-900">Send WhatsApp Message</span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Recent Properties */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[300px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recent Properties</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <h4 className="font-medium text-gray-900">2BHK Apartment, Bandra</h4>
-                <p className="text-sm text-gray-600">₹1.2 Cr • Available</p>
-              </div>
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <h4 className="font-medium text-gray-900">3BHK Villa, Powai</h4>
-                <p className="text-sm text-gray-600">₹2.8 Cr • Under Negotiation</p>
-              </div>
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <h4 className="font-medium text-gray-900">1BHK Studio, Andheri</h4>
-                <p className="text-sm text-gray-600">₹85 L • Rented</p>
-              </div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:p-8 min-h-[300px]">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">This Month</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Properties Sold</span>
-              <span className="font-semibold text-gray-900">3</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">New Clients</span>
-              <span className="font-semibold text-gray-900">12</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Revenue Generated</span>
-              <span className="font-semibold text-gray-900">₹4.2L</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">WhatsApp Messages</span>
-              <span className="font-semibold text-gray-900">1,250</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Appointments</span>
-              <span className="font-semibold text-gray-900">18</span>
-            </div>
           </div>
         </div>
       </div>

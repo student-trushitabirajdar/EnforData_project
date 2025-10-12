@@ -23,18 +23,6 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	}
 }
 
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-// SuccessResponse represents a success response
-type SuccessResponse struct {
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 // Signup handles user registration
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req models.SignupRequest

@@ -35,13 +35,16 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	propertyRepo := repository.NewPropertyRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
+	propertyService := services.NewPropertyService(propertyRepo, userRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	uploadHandler := handlers.NewUploadHandler(authService, cfg)
+	propertyHandler := handlers.NewPropertyHandler(propertyService)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -84,6 +87,10 @@ func main() {
 
 			// File upload routes
 			protected.POST("/upload/profile-photo", uploadHandler.UploadProfilePhoto)
+
+			// Property routes (accessible to all authenticated users)
+			protected.GET("/properties", propertyHandler.GetProperties)
+			protected.POST("/properties", propertyHandler.CreateProperty)
 
 			// Role-specific routes
 			broker := protected.Group("/broker")

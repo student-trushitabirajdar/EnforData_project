@@ -36,15 +36,18 @@ func main() {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	propertyRepo := repository.NewPropertyRepository(db)
+	clientRepo := repository.NewClientRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
 	propertyService := services.NewPropertyService(propertyRepo, userRepo)
+	clientService := services.NewClientService(clientRepo, userRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	uploadHandler := handlers.NewUploadHandler(authService, cfg)
 	propertyHandler := handlers.NewPropertyHandler(propertyService)
+	clientHandler := handlers.NewClientHandler(clientService)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -91,6 +94,13 @@ func main() {
 			// Property routes (accessible to all authenticated users)
 			protected.GET("/properties", propertyHandler.GetProperties)
 			protected.POST("/properties", propertyHandler.CreateProperty)
+
+			// Client routes (accessible to all authenticated users)
+			protected.GET("/clients", clientHandler.GetClients)
+			protected.POST("/clients", clientHandler.CreateClient)
+			protected.GET("/clients/:id", clientHandler.GetClient)
+			protected.PUT("/clients/:id", clientHandler.UpdateClient)
+			protected.DELETE("/clients/:id", clientHandler.DeleteClient)
 
 			// Role-specific routes
 			broker := protected.Group("/broker")

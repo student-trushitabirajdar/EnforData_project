@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, MapPin, Phone, Mail, User, Calendar } from 'lucide-react';
-import { Client } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Eye, CreditCard as Edit, Trash2, MapPin, Phone, Mail, User, Calendar } from 'lucide-react';
+import { apiClient, Client as ApiClient, CreateClientRequest } from '../../services/api';
 
 const ClientsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -8,67 +8,34 @@ const ClientsView: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedClientType, setSelectedClientType] = useState<'buyer' | 'seller' | 'tenant'>('buyer');
 
-  // Mock data for existing clients (sorted by most recent first)
-  const [clients] = useState<Client[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      phone: '+91 9876543210',
-      type: 'buyer',
-      budget_min: 2000000,
-      budget_max: 3000000,
-      preferred_location: 'Bandra West, Mumbai',
-      requirements: '2 BHK apartment with parking',
-      status: 'active',
-      broker_id: '1',
-      created_at: '2024-01-20T10:30:00Z',
-      updated_at: '2024-01-20T10:30:00Z'
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@email.com',
-      phone: '+91 9876543211',
-      type: 'seller',
-      preferred_location: 'Andheri East, Mumbai',
-      requirements: '3 BHK apartment for sale',
-      status: 'active',
-      broker_id: '1',
-      created_at: '2024-01-19T14:15:00Z',
-      updated_at: '2024-01-19T14:15:00Z'
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@email.com',
-      phone: '+91 9876543212',
-      type: 'tenant',
-      budget_min: 25000,
-      budget_max: 40000,
-      preferred_location: 'Powai, Mumbai',
-      requirements: '1 BHK furnished apartment',
-      status: 'converted',
-      broker_id: '1',
-      created_at: '2024-01-18T09:45:00Z',
-      updated_at: '2024-01-18T09:45:00Z'
-    },
-    {
-      id: '4',
-      name: 'Emma Davis',
-      email: 'emma.davis@email.com',
-      phone: '+91 9876543213',
-      type: 'buyer',
-      budget_min: 5000000,
-      budget_max: 8000000,
-      preferred_location: 'Juhu, Mumbai',
-      requirements: '4 BHK sea facing apartment',
-      status: 'active',
-      broker_id: '1',
-      created_at: '2024-01-17T16:20:00Z',
-      updated_at: '2024-01-17T16:20:00Z'
+  // Real client data state
+  const [realClients, setRealClients] = useState<ApiClient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Fetch clients from API
+  const fetchClients = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.getClients();
+      if (response.data) {
+        setRealClients(response.data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch clients';
+      setError(errorMessage);
+      console.error('Error fetching clients:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // Fetch clients on component mount
+  useEffect(() => {
+    fetchClients();
+  }, []);
 
   // Form state for adding new client
   const [formData, setFormData] = useState({
@@ -112,14 +79,20 @@ const ClientsView: React.FC = () => {
     'West Bengal', 'Delhi'
   ];
 
-  const filteredClients = clients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.preferred_location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || client.type === filterType;
-    
-    return matchesSearch && matchesType;
-  });
+  // Convert API clients to display format and filter
+  const filteredClients = realClients
+    .map(client => ({
+      ...client,
+      name: `${client.first_name} ${client.last_name}`,
+    }))
+    .filter(client => {
+      const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           client.preferred_location.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || client.type === filterType;
+      
+      return matchesSearch && matchesType;
+    });
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -162,32 +135,79 @@ const ClientsView: React.FC = () => {
     return min ? `From ${formatAmount(min)}` : `Up to ${formatAmount(max!)}`;
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send the data to your backend
-    console.log('New client data:', {
-      ...formData,
-      type: selectedClientType
-    });
     
-    // Reset form and close modal
-    setFormData({
-      firstName: '',
-      lastName: '',
-      location: '',
-      contactNo: '',
-      email: '',
-      address: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      enquiry: '',
-      budget: ''
-    });
-    setShowAddModal(false);
-    
-    // Show success message
-    alert('Client added successfully!');
+    try {
+      setSubmitting(true);
+      
+      // Transform form data to CreateClientRequest format
+      const clientData: CreateClientRequest = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: formData.contactNo,
+        type: selectedClientType,
+        preferred_location: formData.location,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.postalCode,
+        requirements: formData.enquiry,
+      };
+
+      // Parse budget string into budget_min and budget_max numbers
+      if (formData.budget && (selectedClientType === 'buyer' || selectedClientType === 'tenant')) {
+        // Try to parse budget range (e.g., "2500000-5000000" or "₹25,00,000 - ₹50,00,000")
+        const budgetStr = formData.budget.replace(/[₹,\s]/g, '');
+        const budgetParts = budgetStr.split('-');
+        
+        if (budgetParts.length === 2) {
+          const min = parseFloat(budgetParts[0]);
+          const max = parseFloat(budgetParts[1]);
+          if (!isNaN(min)) clientData.budget_min = min;
+          if (!isNaN(max)) clientData.budget_max = max;
+        } else if (budgetParts.length === 1) {
+          const amount = parseFloat(budgetParts[0]);
+          if (!isNaN(amount)) {
+            clientData.budget_min = amount;
+            clientData.budget_max = amount;
+          }
+        }
+      }
+
+      // Call API to create client
+      const response = await apiClient.createClient(clientData);
+      
+      if (response.data) {
+        // Add new client to realClients state
+        setRealClients(prev => [response.data!, ...prev]);
+        
+        // Show success message
+        alert('✅ Client added successfully!');
+        
+        // Reset form and close modal
+        setFormData({
+          firstName: '',
+          lastName: '',
+          location: '',
+          contactNo: '',
+          email: '',
+          address: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          enquiry: '',
+          budget: ''
+        });
+        setShowAddModal(false);
+      }
+    } catch (err) {
+      console.error('Error creating client:', err);
+      // Error alert is already shown by apiClient.request
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -242,8 +262,40 @@ const ClientsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 mt-4">Loading clients...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-red-800">Error loading clients</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={fetchClients}
+                className="mt-3 bg-red-100 text-red-800 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Clients Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {!loading && !error && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredClients.map((client) => (
           <div key={client.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-4">
@@ -312,27 +364,28 @@ const ClientsView: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
 
-      {filteredClients.length === 0 && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="h-8 w-8 text-gray-400" />
+        {filteredClients.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm || filterType !== 'all'
+                ? 'Try adjusting your search or filters'
+                : 'Get started by adding your first client'
+              }
+            </p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Client
+            </button>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
-          <p className="text-gray-600 mb-4">
-            {searchTerm || filterType !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'Get started by adding your first client'
-            }
-          </p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Add Client
-          </button>
-        </div>
+        )}
+      </div>
       )}
 
       {/* Add Client Modal */}
@@ -589,15 +642,24 @@ const ClientsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={submitting}
+                    className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={submitting}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    Add Client
+                    {submitting ? (
+                      <>
+                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Adding...
+                      </>
+                    ) : (
+                      'Add Client'
+                    )}
                   </button>
                 </div>
               </form>

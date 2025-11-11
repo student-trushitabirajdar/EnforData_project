@@ -85,6 +85,47 @@ export interface Property {
   updated_at: string;
 }
 
+export interface Client {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  type: 'buyer' | 'seller' | 'tenant' | 'owner';
+  status: 'active' | 'converted' | 'inactive';
+  budget_min?: number;
+  budget_max?: number;
+  preferred_location: string;
+  address: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  requirements: string;
+  notes?: string;
+  broker_id: string;
+  broker_name?: string;
+  broker_city?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateClientRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  type: 'buyer' | 'seller' | 'tenant' | 'owner';
+  preferred_location: string;
+  address: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  requirements: string;
+  budget_min?: number;
+  budget_max?: number;
+  notes?: string;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -120,12 +161,31 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Request failed');
+        // Parse validation errors from backend
+        let errorMessage = data.error || 'Request failed';
+        
+        if (data.message) {
+          // Show detailed validation error
+          errorMessage = `${errorMessage}: ${data.message}`;
+        }
+        
+        // Show alert with detailed error
+        alert(`❌ Error: ${errorMessage}`);
+        
+        throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
       console.error('API request failed:', error);
+      
+      // If it's a network error (not our custom error)
+      if (error instanceof TypeError) {
+        const networkError = 'Network error: Unable to connect to server. Please check if the backend is running.';
+        alert(`❌ ${networkError}`);
+        throw new Error(networkError);
+      }
+      
       throw error;
     }
   }
@@ -176,6 +236,35 @@ class ApiClient {
     return this.request<Property>('/properties', {
       method: 'POST',
       body: JSON.stringify(propertyData),
+    });
+  }
+
+  // Client endpoints
+  async getClients(): Promise<ApiResponse<Client[]>> {
+    return this.request<Client[]>('/clients');
+  }
+
+  async createClient(clientData: CreateClientRequest): Promise<ApiResponse<Client>> {
+    return this.request<Client>('/clients', {
+      method: 'POST',
+      body: JSON.stringify(clientData),
+    });
+  }
+
+  async getClient(id: string): Promise<ApiResponse<Client>> {
+    return this.request<Client>(`/clients/${id}`);
+  }
+
+  async updateClient(id: string, clientData: Partial<CreateClientRequest>): Promise<ApiResponse<Client>> {
+    return this.request<Client>(`/clients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(clientData),
+    });
+  }
+
+  async deleteClient(id: string): Promise<ApiResponse> {
+    return this.request(`/clients/${id}`, {
+      method: 'DELETE',
     });
   }
 }

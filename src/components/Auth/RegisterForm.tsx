@@ -127,13 +127,60 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       // No need to switch to login form
       
     } catch (err: any) {
+      console.error('Registration error:', err);
+      
       // Parse backend validation errors
-      if (err.message && err.message.includes(':')) {
+      let errorMessage = err.message || 'Registration failed. Please try again.';
+      
+      // Try to extract field-specific errors from validation messages
+      if (err.message && err.message.includes('Field validation')) {
+        // Parse Go validator error format
+        const validationMatch = err.message.match(/Field validation for '(\w+)' failed on the '(\w+)' tag/);
+        if (validationMatch) {
+          const fieldName = validationMatch[1];
+          const validationType = validationMatch[2];
+          
+          // Map backend field names to form field names
+          const fieldMap: Record<string, string> = {
+            'Email': 'email',
+            'Password': 'password',
+            'WhatsappNumber': 'whatsappNumber',
+            'FirstName': 'firstName',
+            'LastName': 'lastName',
+            'FirmName': 'firmName',
+            'DateOfBirth': 'dateOfBirth',
+            'PostalCode': 'postalCode',
+            'Address': 'address',
+            'Location': 'location',
+            'City': 'city',
+            'State': 'state',
+            'Role': 'role'
+          };
+          
+          const mappedField = fieldMap[fieldName];
+          
+          // Create user-friendly error messages
+          const validationMessages: Record<string, string> = {
+            'required': 'This field is required',
+            'email': 'Please enter a valid email address',
+            'min': 'Value is too short',
+            'max': 'Value is too long',
+            'oneof': 'Invalid value selected'
+          };
+          
+          const friendlyMessage = validationMessages[validationType] || `Validation failed: ${validationType}`;
+          
+          if (mappedField) {
+            setFieldErrors({ [mappedField]: friendlyMessage });
+            errorMessage = `Validation error: ${fieldName} - ${friendlyMessage}`;
+          }
+        }
+      } else if (err.message && err.message.includes(':')) {
+        // Handle other error formats
         const parts = err.message.split(':');
         const fieldName = parts[0].trim().toLowerCase().replace(/\s+/g, '_');
         const errorMsg = parts.slice(1).join(':').trim();
         
-        // Map backend field names to form field names
         const fieldMap: Record<string, string> = {
           'email': 'email',
           'password': 'password',
@@ -150,7 +197,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           setFieldErrors({ [mappedField]: errorMsg });
         }
       }
-      setError(err.message || 'Registration failed. Please try again.');
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

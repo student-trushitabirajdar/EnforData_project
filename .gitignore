@@ -1,5 +1,7 @@
 # ENFOR DATA - Git Ignore File
-.kiro/*
+
+# Kiro IDE folder
+.kiro/
 
 
 # Dependencies
@@ -24,6 +26,8 @@ out/
 .env.test.local
 .env.production.local
 *.env
+!*.env.example
+backend/config.env
 
 # IDE and Editor files
 .vscode/
@@ -234,10 +238,8 @@ docs/_build/
 docs/.doctrees/
 docs/
 
-# Root level markdown files (keep only in .kiro/)
-/README.md
-/CONTRIBUTING.md
-/INTEGRATION_SUMMARY.md
+# Documentation files
+# (README.md is tracked, other .md files ignored)
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -307,3 +309,5 @@ cython_debug/
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+.kiro/

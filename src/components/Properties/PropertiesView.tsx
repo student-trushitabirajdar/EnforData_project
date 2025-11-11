@@ -56,73 +56,7 @@ const PropertiesView: React.FC = () => {
     'Air Conditioning', 'Balcony', 'Furnished', 'Semi-Furnished'
   ];
 
-  // Mock data for properties (kept for development/fallback)
-  const [mockProperties] = useState<Property[]>([
-    {
-      id: '1',
-      title: 'Luxury 3BHK Apartment in Bandra',
-      type: 'apartment',
-      listing_type: 'sale',
-      price: 25000000,
-      area: 1200,
-      bedrooms: 3,
-      bathrooms: 3,
-      location: 'Bandra West, Mumbai',
-      address: '123 Linking Road, Bandra West, Mumbai',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      description: 'Premium apartment with modern amenities and sea view',
-      amenities: ['Swimming Pool', 'Gym', 'Security', 'Parking'],
-      images: ['https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg'],
-      status: 'available',
-      owner_id: '1',
-      broker_id: '1',
-      created_at: '2024-01-15T08:00:00Z',
-      updated_at: '2024-01-15T08:00:00Z'
-    },
-    {
-      id: '2',
-      title: '2BHK Flat for Rent in Andheri',
-      type: 'apartment',
-      listing_type: 'rent',
-      price: 45000,
-      area: 850,
-      bedrooms: 2,
-      bathrooms: 2,
-      location: 'Andheri East, Mumbai',
-      address: '456 DN Nagar, Andheri East, Mumbai',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      description: 'Well-maintained flat near metro station',
-      amenities: ['Parking', 'Security', '24/7 Water'],
-      images: ['https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg'],
-      status: 'rented',
-      owner_id: '2',
-      broker_id: '1',
-      created_at: '2024-01-16T08:00:00Z',
-      updated_at: '2024-01-16T08:00:00Z'
-    },
-    {
-      id: '3',
-      title: 'Commercial Office Space in BKC',
-      type: 'commercial',
-      listing_type: 'rent',
-      price: 150000,
-      area: 2000,
-      location: 'Bandra Kurla Complex, Mumbai',
-      address: 'Tower A, BKC, Mumbai',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      description: 'Premium office space with modern infrastructure',
-      amenities: ['Central AC', 'High Speed Internet', 'Conference Room', 'Cafeteria'],
-      images: ['https://images.pexels.com/photos/221540/pexels-photo-221540.jpeg'],
-      status: 'under_negotiation',
-      owner_id: '3',
-      broker_id: '1',
-      created_at: '2024-01-17T08:00:00Z',
-      updated_at: '2024-01-17T08:00:00Z'
-    }
-  ]);
+  // Note: Mock data removed - using real backend data only
 
   // Fetch properties on component mount
   useEffect(() => {
@@ -152,8 +86,8 @@ const PropertiesView: React.FC = () => {
     }
   };
 
-  // Combine real and mock data for display
-  const properties = [...realProperties, ...mockProperties];
+  // Use only real properties from backend
+  const properties = realProperties;
 
   const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

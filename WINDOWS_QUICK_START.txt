@@ -1,0 +1,76 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║              ENFOR DATA - Windows Quick Start                  ║
+║                  100% AUTOMATIC SETUP                          ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+🚀 SUPER EASY SETUP - Just 3 Steps!
+
+   Works on ANY Windows PC - even completely fresh ones!
+
+┌────────────────────────────────────────────────────────────────┐
+│  STEP 1: Double-click "start.bat"                              │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│  STEP 2: Click "Yes" when Windows asks for permission          │
+│          (Only needed first time for installing software)      │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│  STEP 3: Wait for automatic setup to complete                  │
+│          (Takes 10-15 minutes on first run)                    │
+└────────────────────────────────────────────────────────────────┘
+
+✨ That's it! The website will open automatically!
+
+
+═══════════════════════════════════════════════════════════════
+
+📋 What the script does automatically:
+
+  ✓ Installs Chocolatey (Windows package manager)
+  ✓ Checks if Node.js is installed (installs if missing)
+  ✓ Checks if Go is installed (installs if missing)  
+  ✓ Checks if PostgreSQL is installed (installs if missing)
+  ✓ Creates and configures the database
+  ✓ Runs all database migrations (creates tables)
+  ✓ Creates configuration files automatically
+  ✓ Installs all project dependencies
+  ✓ Builds the application
+  ✓ Starts both backend and frontend servers
+  ✓ Opens your browser to the application
+
+  NO MANUAL CONFIGURATION NEEDED!
+
+═══════════════════════════════════════════════════════════════
+
+🌐 Access the Application:
+
+  Frontend:  http://localhost:5173
+  Backend:   http://localhost:8080
+
+═══════════════════════════════════════════════════════════════
+
+🛑 To Stop the Application:
+
+  Double-click "stop.bat"
+
+═══════════════════════════════════════════════════════════════
+
+❓ Need Help?
+
+  Check error messages in the terminal window
+  Make sure you clicked "Yes" for administrator access
+
+═══════════════════════════════════════════════════════════════
+
+💡 Tips:
+
+  • First run takes longer (installing software)
+  • Subsequent runs are much faster (2-3 minutes)
+  • Keep the terminal window open while using the app
+  • Docker version coming soon for even easier setup!
+
+═══════════════════════════════════════════════════════════════

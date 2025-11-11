@@ -98,62 +98,135 @@ function Wait-ForService {
 # Function to install Chocolatey
 function Install-Chocolatey {
     Write-Status "Installing Chocolatey package manager..."
+    Write-Status "This may take a few minutes..."
     try {
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-        Write-Success "Chocolatey installed successfully"
-        return $true
+        
+        # Download and run Chocolatey installer
+        $installScript = (New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')
+        Invoke-Expression $installScript
+        
+        # Refresh environment to make choco available
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        
+        # Verify installation
+        Start-Sleep -Seconds 3
+        if (Test-Command "choco") {
+            Write-Success "Chocolatey installed successfully"
+            return $true
+        } else {
+            Write-Warning "Chocolatey installed but not immediately available"
+            Write-Status "Please close and reopen this window, then run start.bat again"
+            return $false
+        }
     }
     catch {
         Write-Error "Failed to install Chocolatey: $($_.Exception.Message)"
+        Write-Host ""
+        Write-Host "Please install Chocolatey manually:" -ForegroundColor Yellow
+        Write-Host "1. Open PowerShell as Administrator" -ForegroundColor Cyan
+        Write-Host "2. Run this command:" -ForegroundColor Cyan
+        Write-Host "   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))" -ForegroundColor White
+        Write-Host "3. Close PowerShell and run start.bat again" -ForegroundColor Cyan
         return $false
     }
 }
 
 # Function to install Node.js
 function Install-NodeJS {
-    Write-Status "Installing Node.js..."
+    Write-Status "Installing Node.js (this may take 5-10 minutes)..."
     try {
-        choco install nodejs -y
+        choco install nodejs -y --force
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        Write-Success "Node.js installed successfully"
-        return $true
+        
+        # Verify installation
+        Start-Sleep -Seconds 3
+        if (Test-Command "node") {
+            $version = node --version
+            Write-Success "Node.js installed successfully: $version"
+            return $true
+        } else {
+            Write-Warning "Node.js installed but not immediately available"
+            Write-Status "Please close this window and run start.bat again"
+            return $false
+        }
     }
     catch {
         Write-Error "Failed to install Node.js: $($_.Exception.Message)"
+        Write-Status "Download manually from: https://nodejs.org/"
         return $false
     }
 }
 
 # Function to install Go
 function Install-Go {
-    Write-Status "Installing Go..."
+    Write-Status "Installing Go (this may take 5-10 minutes)..."
     try {
-        choco install golang -y
+        choco install golang -y --force
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        Write-Success "Go installed successfully"
-        return $true
+        
+        # Verify installation
+        Start-Sleep -Seconds 3
+        if (Test-Command "go") {
+            $version = go version
+            Write-Success "Go installed successfully: $version"
+            return $true
+        } else {
+            Write-Warning "Go installed but not immediately available"
+            Write-Status "Please close this window and run start.bat again"
+            return $false
+        }
     }
     catch {
         Write-Error "Failed to install Go: $($_.Exception.Message)"
+        Write-Status "Download manually from: https://golang.org/dl/"
         return $false
     }
 }
 
 # Function to install PostgreSQL
 function Install-PostgreSQL {
-    Write-Status "Installing PostgreSQL..."
+    Write-Status "Installing PostgreSQL (this may take 10-15 minutes)..."
     try {
-        choco install postgresql -y --params '/Password:enfor_data'
+        choco install postgresql -y --params '/Password:postgres' --force
+        
+        # Refresh environment variables
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        
         Write-Success "PostgreSQL installed successfully"
-        Write-Warning "PostgreSQL service may need to be started manually"
-        return $true
+        
+        # Wait for PostgreSQL service to start
+        Write-Status "Starting PostgreSQL service..."
+        Start-Sleep -Seconds 10
+        
+        # Try to start the service if not running
+        $pgService = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
+        if ($pgService) {
+            if ($pgService.Status -ne "Running") {
+                Start-Service $pgService.Name -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 5
+            }
+            Write-Success "PostgreSQL service is running"
+        } else {
+            Write-Warning "PostgreSQL service not found - may need manual start"
+        }
+        
+        # Verify installation
+        if (Test-Command "psql") {
+            Write-Success "PostgreSQL command-line tools available"
+            return $true
+        } else {
+            Write-Warning "PostgreSQL installed but psql not immediately available"
+            Write-Status "Please close this window and run start.bat again"
+            return $false
+        }
     }
     catch {
         Write-Error "Failed to install PostgreSQL: $($_.Exception.Message)"
+        Write-Status "Download manually from: https://www.postgresql.org/download/windows/"
         return $false
     }
 }
@@ -202,12 +275,53 @@ function Start-Setup {
     # Install Chocolatey if not present
     if (-not (Test-Command "choco")) {
         Write-Status "Chocolatey package manager not found"
+        Write-Host ""
+        
         if ($isAdmin) {
-            Install-Chocolatey
+            Write-Status "Attempting to install Chocolatey automatically..."
+            if (-not (Install-Chocolatey)) {
+                Write-Error "Chocolatey installation failed"
+                Write-Host ""
+                Write-Host "Alternative: Install software manually" -ForegroundColor Yellow
+                Write-Host "1. Node.js: https://nodejs.org/ (Download and run installer)" -ForegroundColor Cyan
+                Write-Host "2. Go: https://golang.org/dl/ (Download and run installer)" -ForegroundColor Cyan
+                Write-Host "3. PostgreSQL: https://www.postgresql.org/download/windows/ (Download and run installer)" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "After manual installation, run start.bat again" -ForegroundColor Yellow
+                return $false
+            }
         } else {
-            Write-Error "Chocolatey installation requires administrator privileges"
-            Write-Status "Please install Chocolatey manually: https://chocolatey.org/install"
-            return $false
+            Write-Warning "Administrator privileges required to install Chocolatey"
+            Write-Host ""
+            Write-Host "Choose an option:" -ForegroundColor Yellow
+            Write-Host "1. Restart as Administrator (Recommended)" -ForegroundColor Cyan
+            Write-Host "2. Install Chocolatey manually" -ForegroundColor Cyan
+            Write-Host "3. Install Node.js, Go, and PostgreSQL manually" -ForegroundColor Cyan
+            Write-Host ""
+            
+            $choice = Read-Host "Enter choice (1, 2, or 3)"
+            
+            if ($choice -eq "1") {
+                Write-Status "Please run start.bat again as Administrator"
+                Write-Host "Right-click start.bat -> Run as administrator" -ForegroundColor Cyan
+                return $false
+            } elseif ($choice -eq "2") {
+                Write-Host ""
+                Write-Host "To install Chocolatey manually:" -ForegroundColor Yellow
+                Write-Host "1. Right-click PowerShell -> Run as Administrator" -ForegroundColor Cyan
+                Write-Host "2. Run: Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))" -ForegroundColor White
+                Write-Host "3. Close PowerShell and run start.bat again" -ForegroundColor Cyan
+                return $false
+            } else {
+                Write-Host ""
+                Write-Host "Manual Installation Links:" -ForegroundColor Yellow
+                Write-Host "1. Node.js: https://nodejs.org/ (Download LTS version)" -ForegroundColor Cyan
+                Write-Host "2. Go: https://golang.org/dl/ (Download latest version)" -ForegroundColor Cyan
+                Write-Host "3. PostgreSQL: https://www.postgresql.org/download/windows/" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "After installation, run start.bat again" -ForegroundColor Yellow
+                return $false
+            }
         }
     } else {
         Write-Success "Chocolatey found"
@@ -280,13 +394,70 @@ function Start-EnforData {
         exit 1
     }
     
-    # Run setup if requested
-    if ($Setup) {
+    # Auto-detect if setup is needed
+    $needsSetup = $false
+    
+    if (-not (Test-Command "node")) {
+        Write-Warning "Node.js not found - setup required"
+        $needsSetup = $true
+    }
+    
+    if (-not (Test-Command "go")) {
+        Write-Warning "Go not found - setup required"
+        $needsSetup = $true
+    }
+    
+    if (-not (Test-Command "psql")) {
+        Write-Warning "PostgreSQL not found - setup required"
+        $needsSetup = $true
+    }
+    
+    # Run setup automatically if needed or requested
+    if ($Setup -or $needsSetup) {
+        Write-Host ""
+        Write-Status "🔧 Setup required - installing missing dependencies..."
+        Write-Host ""
+        
+        # Check for admin rights
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+        
+        if (-not $isAdmin) {
+            Write-Warning "Administrator privileges required for automatic installation"
+            Write-Host ""
+            Write-Host "Please choose an option:" -ForegroundColor Yellow
+            Write-Host "1. Restart this script as Administrator (Recommended)" -ForegroundColor Cyan
+            Write-Host "2. Install dependencies manually" -ForegroundColor Cyan
+            Write-Host ""
+            
+            $choice = Read-Host "Enter choice (1 or 2)"
+            
+            if ($choice -eq "1") {
+                Write-Status "Restarting with administrator privileges..."
+                $scriptPath = $MyInvocation.MyCommand.Path
+                Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptPath`" -Setup"
+                exit 0
+            } else {
+                Write-Host ""
+                Write-Host "Manual Installation Required:" -ForegroundColor Yellow
+                Write-Host "1. Node.js: https://nodejs.org/ (Download LTS version)" -ForegroundColor Cyan
+                Write-Host "2. Go: https://golang.org/dl/ (Download latest version)" -ForegroundColor Cyan
+                Write-Host "3. PostgreSQL: https://www.postgresql.org/download/windows/" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "After installation, run this script again." -ForegroundColor Yellow
+                exit 1
+            }
+        }
+        
         if (-not (Start-Setup)) {
             Write-Error "Setup failed. Please resolve issues and try again."
             exit 1
         }
         Write-Host ""
+        Write-Success "Setup completed! Continuing with startup..."
+        Write-Host ""
+        
+        # Refresh environment variables after installation
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
     }
     
     # Check prerequisites
@@ -294,7 +465,8 @@ function Start-EnforData {
     
     # Check Node.js
     if (-not (Test-Command "node")) {
-        Write-Error "Node.js is not installed. Run with -Setup flag or install manually."
+        Write-Error "Node.js is not installed. Please restart the script or install manually."
+        Write-Status "Download from: https://nodejs.org/"
         exit 1
     }
     $nodeVersion = node --version
@@ -302,7 +474,8 @@ function Start-EnforData {
     
     # Check Go
     if (-not (Test-Command "go")) {
-        Write-Error "Go is not installed. Run with -Setup flag or install manually."
+        Write-Error "Go is not installed. Please restart the script or install manually."
+        Write-Status "Download from: https://golang.org/dl/"
         exit 1
     }
     $goVersion = go version
@@ -310,20 +483,145 @@ function Start-EnforData {
     
     # Check PostgreSQL
     if (-not (Test-Command "psql")) {
-        Write-Error "PostgreSQL is not installed. Run with -Setup flag or install manually."
+        Write-Error "PostgreSQL is not installed. Please restart the script or install manually."
+        Write-Status "Download from: https://www.postgresql.org/download/windows/"
         exit 1
     }
     Write-Success "PostgreSQL found"
     
     # Test database connection
+    Write-Status "Checking database connection..."
+    $dbConnected = $false
     try {
+        $env:PGPASSWORD = "enfor_data"
         $null = psql -U backend -d enfor_data -h localhost -c "SELECT 1;" 2>$null
         Write-Success "Database connection verified"
+        $dbConnected = $true
     }
     catch {
-        Write-Error "Cannot connect to enfor_data database."
-        Write-Status "Please ensure PostgreSQL is running and database is configured."
-        exit 1
+        Write-Warning "Cannot connect to enfor_data database"
+    }
+    
+    # If database connection failed, try to set it up
+    if (-not $dbConnected) {
+        Write-Status "Attempting to setup database..."
+        
+        # Check if PostgreSQL service is running
+        $pgService = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
+        if ($pgService -and $pgService.Status -ne "Running") {
+            Write-Status "Starting PostgreSQL service..."
+            Start-Service $pgService.Name
+            Start-Sleep -Seconds 5
+        }
+        
+        # Try to create database with default postgres user
+        try {
+            $env:PGPASSWORD = "postgres"
+            $createDbScript = @"
+DO `$`$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'enfor_data') THEN
+        CREATE DATABASE enfor_data;
+    END IF;
+    
+    IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'backend') THEN
+        CREATE USER backend WITH PASSWORD 'enfor_data';
+    END IF;
+    
+    GRANT ALL PRIVILEGES ON DATABASE enfor_data TO backend;
+END
+`$`$;
+"@
+            $createDbScript | psql -U postgres -h localhost 2>$null
+            Write-Success "Database setup completed"
+            
+            # Verify connection again
+            $env:PGPASSWORD = "enfor_data"
+            $null = psql -U backend -d enfor_data -h localhost -c "SELECT 1;" 2>$null
+            Write-Success "Database connection verified"
+            $dbConnected = $true
+        }
+        catch {
+            Write-Warning "Automatic database setup failed"
+            Write-Host ""
+            Write-Host "Please setup database manually:" -ForegroundColor Yellow
+            Write-Host "1. Open pgAdmin or psql as postgres user" -ForegroundColor Cyan
+            Write-Host "2. Run these commands:" -ForegroundColor Cyan
+            Write-Host "   CREATE DATABASE enfor_data;" -ForegroundColor White
+            Write-Host "   CREATE USER backend WITH PASSWORD 'enfor_data';" -ForegroundColor White
+            Write-Host "   GRANT ALL PRIVILEGES ON DATABASE enfor_data TO backend;" -ForegroundColor White
+            Write-Host ""
+            $continue = Read-Host "Continue anyway? (y/n)"
+            if ($continue -ne "y" -and $continue -ne "Y") {
+                exit 1
+            }
+        }
+    }
+    
+    # Run database migrations if connected
+    if ($dbConnected) {
+        Write-Status "Running database migrations..."
+        try {
+            $env:PGPASSWORD = "enfor_data"
+            $migrationFiles = Get-ChildItem "backend\migrations\*.sql" | Sort-Object Name
+            
+            foreach ($migration in $migrationFiles) {
+                Write-Status "Running migration: $($migration.Name)"
+                Get-Content $migration.FullName | psql -U backend -d enfor_data -h localhost 2>$null
+            }
+            
+            Write-Success "Database migrations completed"
+        }
+        catch {
+            Write-Warning "Some migrations may have failed (this is OK if tables already exist)"
+        }
+    }
+    
+    Write-Host ""
+    
+    # Create backend config if it doesn't exist
+    Write-Status "Checking backend configuration..."
+    if (-not (Test-Path "backend\config.env")) {
+        Write-Status "Creating backend configuration file..."
+        try {
+            if (Test-Path "backend\config.env.example") {
+                Copy-Item "backend\config.env.example" "backend\config.env"
+                Write-Success "Configuration file created from template"
+            } else {
+                # Create default config
+                $defaultConfig = @"
+# ENFOR DATA Backend Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=backend
+DB_PASSWORD=enfor_data
+DB_NAME=enfor_data
+DB_SSLMODE=disable
+PORT=8080
+GIN_MODE=release
+JWT_SECRET=enfor-data-secret-key-$(Get-Random)
+JWT_EXPIRY=24h
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:3001
+UPLOAD_DIR=./uploads
+MAX_UPLOAD_SIZE=10485760
+ENVIRONMENT=development
+"@
+                $defaultConfig | Out-File -FilePath "backend\config.env" -Encoding UTF8
+                Write-Success "Default configuration file created"
+            }
+        }
+        catch {
+            Write-Warning "Could not create config file automatically"
+            Write-Status "Please create backend\config.env manually"
+        }
+    } else {
+        Write-Success "Configuration file found"
+    }
+    
+    # Create uploads directory if it doesn't exist
+    if (-not (Test-Path "backend\uploads")) {
+        New-Item -ItemType Directory -Path "backend\uploads" -Force | Out-Null
+        Write-Success "Uploads directory created"
     }
     
     Write-Host ""

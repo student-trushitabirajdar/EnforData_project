@@ -267,6 +267,88 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Appointment endpoints
+  async getAppointments(): Promise<ApiResponse<Appointment[]>> {
+    return this.request<Appointment[]>('/appointments');
+  }
+
+  async createAppointment(appointmentData: CreateAppointmentRequest): Promise<ApiResponse<Appointment>> {
+    return this.request<Appointment>('/appointments', {
+      method: 'POST',
+      body: JSON.stringify(appointmentData),
+    });
+  }
+
+  async getAppointment(id: string): Promise<ApiResponse<Appointment>> {
+    return this.request<Appointment>(`/appointments/${id}`);
+  }
+
+  async updateAppointment(id: string, appointmentData: UpdateAppointmentRequest): Promise<ApiResponse<Appointment>> {
+    return this.request<Appointment>(`/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(appointmentData),
+    });
+  }
+
+  async deleteAppointment(id: string): Promise<ApiResponse> {
+    return this.request(`/appointments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAppointmentStats(): Promise<ApiResponse<AppointmentStats>> {
+    return this.request<AppointmentStats>('/appointments/stats');
+  }
+}
+
+export interface Appointment {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  type: 'site_visit' | 'meeting' | 'call';
+  client_id: string;
+  client_name?: string;
+  client_phone?: string;
+  property_id?: string;
+  property_title?: string;
+  property_address?: string;
+  broker_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAppointmentRequest {
+  title: string;
+  description?: string;
+  date: string;
+  time: string;
+  type: 'site_visit' | 'meeting' | 'call';
+  client_id: string;
+  property_id?: string;
+}
+
+export interface UpdateAppointmentRequest {
+  title?: string;
+  description?: string;
+  date?: string;
+  time?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
+  type?: 'site_visit' | 'meeting' | 'call';
+  client_id?: string;
+  property_id?: string;
+}
+
+export interface AppointmentStats {
+  total: number;
+  scheduled: number;
+  completed: number;
+  cancelled: number;
+  today: number;
+  upcoming: number;
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

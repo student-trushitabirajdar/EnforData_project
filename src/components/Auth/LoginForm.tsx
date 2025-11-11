@@ -29,39 +29,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
     }
   };
 
-  const demoCredentials = [
-    { role: 'Broker', email: 'broker@example.com', password: 'password123' },
-    { role: 'Channel Partner', email: 'builder@example.com', password: 'password123' },
-    { role: 'Admin', email: 'admin@example.com', password: 'password123' }
-  ];
-
-  const handleDemoLogin = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-  };
-
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
         <p className="text-gray-600 mt-2">Sign in to your ENFOR DATA account</p>
-      </div>
-
-      {/* Demo Credentials */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-sm font-semibold text-blue-900 mb-2">Demo Accounts:</h3>
-        <div className="space-y-2">
-          {demoCredentials.map((cred, index) => (
-            <button
-              key={index}
-              onClick={() => handleDemoLogin(cred.email, cred.password)}
-              className="w-full text-left p-2 text-xs bg-white rounded border hover:bg-blue-50 transition-colors"
-            >
-              <div className="font-medium text-blue-900">{cred.role}</div>
-              <div className="text-blue-700">{cred.email} / {cred.password}</div>
-            </button>
-          ))}
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,5 +1,5 @@
 # ENFOR DATA - Windows PowerShell Stop Script
-# This script stops both backend and frontend servers on Windows
+# This script stops both backend and frontend servers
 
 # Colors for output
 function Write-Status {
@@ -17,121 +17,78 @@ function Write-Warning {
     Write-Host "⚠️  $Message" -ForegroundColor Yellow
 }
 
+Write-Status "Stopping ENFOR DATA Platform..."
+Write-Host ""
+
 # Function to stop processes on a specific port
 function Stop-ProcessOnPort {
-    param($Port)
+    param($Port, $Name)
     try {
-        $processes = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess
-        if ($processes) {
-            Write-Status "Stopping processes on port $Port"
+        $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+        if ($connections) {
+            $processes = $connections | Select-Object -ExpandProperty OwningProcess -Unique
             foreach ($pid in $processes) {
-                try {
+                $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                if ($process) {
+                    Write-Status "Stopping $Name (PID: $pid)..."
                     Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
                 }
-                catch {
-                    # Process might already be stopped
-                }
             }
+            Write-Success "$Name stopped"
+        } else {
+            Write-Warning "$Name not running on port $Port"
         }
     }
     catch {
-        # Port might not be in use, which is fine
+        Write-Warning "Could not stop $Name on port $Port"
     }
 }
 
-function Stop-EnforData {
-    Write-Status "Stopping ENFOR DATA Platform on Windows..."
-    Write-Host ""
-    
-    # Stop backend server
-    if (Test-Path "backend.pid") {
-        try {
-            $backendPid = Get-Content "backend.pid" -ErrorAction SilentlyContinue
-            if ($backendPid) {
-                $process = Get-Process -Id $backendPid -ErrorAction SilentlyContinue
-                if ($process) {
-                    Write-Status "Stopping backend server (PID: $backendPid)"
-                    Stop-Process -Id $backendPid -Force -ErrorAction SilentlyContinue
-                }
-            }
-            Remove-Item "backend.pid" -ErrorAction SilentlyContinue
-        }
-        catch {
-            Write-Warning "Could not stop backend server cleanly"
-        }
-    }
-    
-    # Stop frontend server
-    if (Test-Path "frontend.pid") {
-        try {
-            $frontendPid = Get-Content "frontend.pid" -ErrorAction SilentlyContinue
-            if ($frontendPid) {
-                $process = Get-Process -Id $frontendPid -ErrorAction SilentlyContinue
-                if ($process) {
-                    Write-Status "Stopping frontend server (PID: $frontendPid)"
-                    Stop-Process -Id $frontendPid -Force -ErrorAction SilentlyContinue
-                }
-            }
-            Remove-Item "frontend.pid" -ErrorAction SilentlyContinue
-        }
-        catch {
-            Write-Warning "Could not stop frontend server cleanly"
-        }
-    }
-    
-    # Kill any remaining processes
-    Write-Status "Cleaning up remaining processes..."
-    
-    # Kill backend processes
-    Get-Process -Name "enfor-backend" -ErrorAction SilentlyContinue | Stop-Process -Force
-    
-    # Kill frontend processes (Node.js processes running Vite)
-    Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
-        try {
-            $_.CommandLine -like "*vite*" -or $_.CommandLine -like "*dev*"
-        }
-        catch {
-            $false
-        }
-    } | Stop-Process -Force
-    
-    # Stop processes on specific ports
-    Stop-ProcessOnPort 8080  # Backend
-    Stop-ProcessOnPort 3000  # Frontend
-    Stop-ProcessOnPort 3001  # Frontend alternative
-    Stop-ProcessOnPort 5173  # Vite default
-    
-    # Clean up log files (optional)
-    $logFiles = @("backend.log", "frontend.log")
-    $hasLogs = $false
-    
-    foreach ($logFile in $logFiles) {
-        if (Test-Path $logFile) {
-            $hasLogs = $true
-            break
-        }
-    }
-    
-    if ($hasLogs) {
-        $deleteLogs = Read-Host "Delete log files? (y/n)"
-        if ($deleteLogs -eq "y" -or $deleteLogs -eq "Y") {
-            foreach ($logFile in $logFiles) {
-                if (Test-Path $logFile) {
-                    Remove-Item $logFile -ErrorAction SilentlyContinue
-                }
-            }
-            Write-Success "Log files deleted"
-        }
-    }
-    
-    Write-Success "ENFOR DATA Platform stopped successfully"
+# Stop backend (port 8080)
+Stop-ProcessOnPort 8080 "Backend server"
+
+# Stop frontend (multiple possible ports)
+Stop-ProcessOnPort 5173 "Frontend server (Vite)"
+Stop-ProcessOnPort 3000 "Frontend server"
+Stop-ProcessOnPort 3001 "Frontend server (alt)"
+
+# Stop by process name
+Write-Status "Stopping processes by name..."
+
+$backendProcesses = Get-Process -Name "enfor-backend" -ErrorAction SilentlyContinue
+if ($backendProcesses) {
+    $backendProcesses | Stop-Process -Force
+    Write-Success "Backend processes stopped"
 }
 
-# Run main function
-try {
-    Stop-EnforData
+$nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue
+if ($nodeProcesses) {
+    # Only stop node processes that are likely our frontend
+    foreach ($proc in $nodeProcesses) {
+        try {
+            $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)").CommandLine
+            if ($cmdLine -like "*vite*" -or $cmdLine -like "*enfor*") {
+                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+                Write-Success "Frontend process stopped (PID: $($proc.Id))"
+            }
+        }
+        catch {
+            # Ignore errors
+        }
+    }
 }
-catch {
-    Write-Error "Script failed: $($_.Exception.Message)"
-    exit 1
+
+# Clean up PID files
+if (Test-Path "backend.pid") {
+    Remove-Item "backend.pid" -Force
 }
+
+if (Test-Path "frontend.pid") {
+    Remove-Item "frontend.pid" -Force
+}
+
+Write-Host ""
+Write-Success "🛑 ENFOR DATA Platform stopped successfully!"
+Write-Host ""
+Write-Host "To start again, run: start.bat" -ForegroundColor Cyan
+Write-Host ""

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, User, MapPin, Phone, CheckCircle, AlertCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, Plus, Search, Eye, CreditCard as Edit, Trash2, User, MapPin, Phone, CheckCircle, AlertCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import StatsCard from '../Dashboard/StatsCard';
-import { Appointment } from '../../types';
+import { apiClient, Appointment as ApiAppointment, CreateAppointmentRequest, Client } from '../../services/api';
 
 const AppointmentsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -11,88 +11,69 @@ const AppointmentsView: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Real appointments state
+  const [appointments, setAppointments] = useState<ApiAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Clients state for dropdown
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+
   // Form state for adding new appointment
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     date: '',
     time: '',
-    clientName: '',
-    clientPhone: '',
-    propertyAddress: '',
+    clientId: '',
+    propertyId: '',
     type: 'site_visit' as 'site_visit' | 'meeting' | 'call'
   });
 
-  // Mock appointments data
-  const [appointments] = useState<(Appointment & { clientName: string; clientPhone: string; propertyAddress?: string })[]>([
-    {
-      id: '1',
-      title: 'Site Visit - Luxury Apartment',
-      description: 'Property viewing for 3BHK apartment in Bandra',
-      date: '2024-01-25',
-      time: '10:00',
-      client_id: '1',
-      clientName: 'John Doe',
-      clientPhone: '+91 9876543210',
-      propertyAddress: 'Bandra West, Mumbai',
-      broker_id: '1',
-      status: 'scheduled',
-      type: 'site_visit',
-      created_at: '2024-01-20T08:00:00Z',
-      updated_at: '2024-01-20T08:00:00Z'
-    },
-    {
-      id: '2',
-      title: 'Client Meeting - Investment Discussion',
-      description: 'Discussion about investment opportunities',
-      date: '2024-01-25',
-      time: '14:30',
-      client_id: '2',
-      clientName: 'Sarah Wilson',
-      clientPhone: '+91 9876543211',
-      broker_id: '1',
-      status: 'scheduled',
-      type: 'meeting',
-      created_at: '2024-01-20T08:00:00Z',
-      updated_at: '2024-01-20T08:00:00Z'
-    },
-    {
-      id: '3',
-      title: 'Property Viewing - 2BHK Flat',
-      description: 'Showing 2BHK flat to potential buyer',
-      date: '2024-01-24',
-      time: '16:00',
-      client_id: '3',
-      clientName: 'Mike Johnson',
-      clientPhone: '+91 9876543212',
-      propertyAddress: 'Andheri East, Mumbai',
-      broker_id: '1',
-      status: 'completed',
-      type: 'site_visit',
-      created_at: '2024-01-20T08:00:00Z',
-      updated_at: '2024-01-20T08:00:00Z'
-    },
-    {
-      id: '4',
-      title: 'Follow-up Call',
-      description: 'Follow up on property inquiry',
-      date: '2024-01-26',
-      time: '11:00',
-      client_id: '4',
-      clientName: 'Emma Davis',
-      clientPhone: '+91 9876543213',
-      broker_id: '1',
-      status: 'scheduled',
-      type: 'call',
-      created_at: '2024-01-20T08:00:00Z',
-      updated_at: '2024-01-20T08:00:00Z'
-    }
-  ]);
+  // Fetch appointments and clients on component mount
+  useEffect(() => {
+    fetchAppointments();
+    fetchClients();
+  }, []);
 
-  // Calculate stats
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.getAppointments();
+      if (response.data) {
+        setAppointments(response.data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch appointments';
+      setError(errorMessage);
+      console.error('Error fetching appointments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      setLoadingClients(true);
+      const response = await apiClient.getClients();
+      if (response.data) {
+        setClients(response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching clients:', err);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  // Calculate stats from real data
+  const today = new Date().toISOString().split('T')[0];
   const appointmentStats = {
     totalThisMonth: appointments.length,
-    todayAppointments: appointments.filter(apt => apt.date === '2024-01-25').length,
+    todayAppointments: appointments.filter(apt => apt.date === today).length,
     scheduledAppointments: appointments.filter(apt => apt.status === 'scheduled').length,
     completedAppointments: appointments.filter(apt => apt.status === 'completed').length
   };
@@ -143,7 +124,7 @@ const AppointmentsView: React.FC = () => {
 
     return appointments.filter(appointment => {
       const matchesSearch = appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           appointment.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+                           (appointment.client_name && appointment.client_name.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesStatus = filterStatus === 'all' || appointment.status === filterStatus;
       
@@ -156,29 +137,57 @@ const AppointmentsView: React.FC = () => {
     });
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('New appointment data:', formData);
     
-    // Reset form and close modal
-    setFormData({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      clientName: '',
-      clientPhone: '',
-      propertyAddress: '',
-      type: 'site_visit'
-    });
-    setShowAddModal(false);
-    alert('Appointment added successfully!');
+    if (!formData.clientId) {
+      alert('Please select a client');
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      
+      const appointmentData: CreateAppointmentRequest = {
+        title: formData.title,
+        description: formData.description,
+        date: formData.date,
+        time: formData.time,
+        type: formData.type,
+        client_id: formData.clientId,
+        property_id: formData.propertyId || undefined,
+      };
+
+      const response = await apiClient.createAppointment(appointmentData);
+      
+      if (response.data) {
+        setAppointments(prev => [response.data!, ...prev]);
+        alert('✅ Appointment added successfully!');
+        
+        // Reset form and close modal
+        setFormData({
+          title: '',
+          description: '',
+          date: '',
+          time: '',
+          clientId: '',
+          propertyId: '',
+          type: 'site_visit'
+        });
+        setShowAddModal(false);
+      }
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
@@ -241,7 +250,7 @@ const AppointmentsView: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">{appointment.title}</h4>
-                  <p className="text-xs text-gray-600">with {appointment.clientName}</p>
+                  <p className="text-xs text-gray-600">with {appointment.client_name || 'Client'}</p>
                   <p className="text-xs text-gray-500">{appointment.date} at {appointment.time}</p>
                 </div>
               </div>
@@ -262,6 +271,37 @@ const AppointmentsView: React.FC = () => {
 
   const renderListView = () => (
     <div className="space-y-6">
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 mt-4">Loading appointments...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-red-800">Error loading appointments</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={fetchAppointments}
+                className="mt-3 bg-red-100 text-red-800 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -324,18 +364,18 @@ const AppointmentsView: React.FC = () => {
                   </div>
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-2" />
-                    <span>{appointment.clientName}</span>
+                    <span>{appointment.client_name || 'Client'}</span>
                   </div>
                   <div className="flex items-center">
                     <Phone className="h-4 w-4 mr-2" />
-                    <span>{appointment.clientPhone}</span>
+                    <span>{appointment.client_phone || 'N/A'}</span>
                   </div>
                 </div>
                 
-                {appointment.propertyAddress && (
+                {appointment.property_address && (
                   <div className="flex items-center text-sm text-gray-600 mt-2">
                     <MapPin className="h-4 w-4 mr-2" />
-                    <span>{appointment.propertyAddress}</span>
+                    <span>{appointment.property_address}</span>
                   </div>
                 )}
               </div>
@@ -636,59 +676,57 @@ const AppointmentsView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Client Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Client Information</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-1">
-                        Client Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="clientName"
-                        name="clientName"
-                        value={formData.clientName}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Client's full name"
-                        required
-                      />
+                {/* Client Selection */}
+                <div>
+                  <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Client <span className="text-red-500">*</span>
+                  </label>
+                  {loadingClients ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                      Loading clients...
                     </div>
-                    <div>
-                      <label htmlFor="clientPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                        Client Phone <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        id="clientPhone"
-                        name="clientPhone"
-                        value={formData.clientPhone}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="+91 9876543210"
-                        required
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <select
+                      id="clientId"
+                      name="clientId"
+                      value={formData.clientId}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">-- Select a client --</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.first_name} {client.last_name} ({client.type}) - {client.preferred_location}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {clients.length === 0 && !loadingClients && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      No clients found. Please add clients first in the Clients section.
+                    </p>
+                  )}
                 </div>
 
-                {/* Property Address - Only for site visits */}
+                {/* Property Selection - Optional for site visits */}
                 {formData.type === 'site_visit' && (
                   <div>
-                    <label htmlFor="propertyAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                      Property Address
+                    <label htmlFor="propertyId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Property (Optional)
                     </label>
                     <input
                       type="text"
-                      id="propertyAddress"
-                      name="propertyAddress"
-                      value={formData.propertyAddress}
+                      id="propertyId"
+                      name="propertyId"
+                      value={formData.propertyId}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Property location for site visit"
+                      placeholder="Enter property ID"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Link this appointment to a specific property
+                    </p>
                   </div>
                 )}
 
@@ -697,15 +735,24 @@ const AppointmentsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={submitting}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={submitting}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    Add Appointment
+                    {submitting ? (
+                      <>
+                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Adding...
+                      </>
+                    ) : (
+                      'Add Appointment'
+                    )}
                   </button>
                 </div>
               </form>

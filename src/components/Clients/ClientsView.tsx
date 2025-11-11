@@ -305,6 +305,7 @@ const ClientsView: React.FC = () => {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5">ID: {client.id}</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(client.type)}`}>
                       {client.type.toUpperCase()}

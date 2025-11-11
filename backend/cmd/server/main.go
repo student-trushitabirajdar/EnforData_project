@@ -37,17 +37,20 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	propertyRepo := repository.NewPropertyRepository(db)
 	clientRepo := repository.NewClientRepository(db)
+	appointmentRepo := repository.NewAppointmentRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
 	propertyService := services.NewPropertyService(propertyRepo, userRepo)
 	clientService := services.NewClientService(clientRepo, userRepo)
+	appointmentService := services.NewAppointmentService(appointmentRepo, clientRepo, propertyRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	uploadHandler := handlers.NewUploadHandler(authService, cfg)
 	propertyHandler := handlers.NewPropertyHandler(propertyService)
 	clientHandler := handlers.NewClientHandler(clientService)
+	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -101,6 +104,14 @@ func main() {
 			protected.GET("/clients/:id", clientHandler.GetClient)
 			protected.PUT("/clients/:id", clientHandler.UpdateClient)
 			protected.DELETE("/clients/:id", clientHandler.DeleteClient)
+
+			// Appointment routes (accessible to all authenticated users)
+			protected.POST("/appointments", appointmentHandler.CreateAppointment)
+			protected.GET("/appointments", appointmentHandler.GetAppointments)
+			protected.GET("/appointments/stats", appointmentHandler.GetAppointmentStats)
+			protected.GET("/appointments/:id", appointmentHandler.GetAppointment)
+			protected.PUT("/appointments/:id", appointmentHandler.UpdateAppointment)
+			protected.DELETE("/appointments/:id", appointmentHandler.DeleteAppointment)
 
 			// Role-specific routes
 			broker := protected.Group("/broker")

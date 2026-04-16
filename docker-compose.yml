@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: enfor_data
+      POSTGRES_USER: backend
+      POSTGRES_PASSWORD: enfor_data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backend -d enfor_data"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: backend
+      DB_PASSWORD: enfor_data
+      DB_NAME: enfor_data
+      DB_SSL_MODE: disable
+      PORT: 8080
+      GIN_MODE: release
+      JWT_SECRET: enfor-data-docker-development-secret-change-before-production
+      JWT_EXPIRES_IN: 24h
+      UPLOAD_PATH: ./uploads
+      MAX_FILE_SIZE: 10485760
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:

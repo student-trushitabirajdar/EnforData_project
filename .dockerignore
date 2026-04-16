@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.kiro
+.sixth
+backend/.pgdata
+backend/uploads
+backend/*.exe
+backend.log
+backend.err.log
+frontend.log
+frontend.err.log
+*.pid
+*.log

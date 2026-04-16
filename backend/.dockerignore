@@ -1,0 +1,7 @@
+.pgdata
+uploads
+*.exe
+*.log
+config.env
+tmp
+vendor

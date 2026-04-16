@@ -125,14 +125,13 @@ backend/tmp/
 backend/vendor/
 backend/main
 backend/setup.sh
-backend/Dockerfile
-backend/.dockerignore
 backend/Makefile
 
 # Database files
 *.db
 *.sqlite
 *.sqlite3
+backend/.pgdata/
 
 # Upload directories
 uploads/

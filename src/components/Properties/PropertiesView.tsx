@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, CreditCard as Edit, Trash2, MapPin, Bed, Bath, Square, IndianRupee, Building } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, Eye, CreditCard as Edit, Trash2, MapPin, Bed, Bath, Square, Building } from 'lucide-react';
 import { Property } from '../../types';
-import { apiClient, CreatePropertyRequest } from '../../services/api';
+import { apiClient, CreatePropertyRequest, UpdatePropertyRequest } from '../../services/api';
 
 const PropertiesView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   
   // Real properties state
   const [realProperties, setRealProperties] = useState<Property[]>([]);
@@ -31,6 +34,7 @@ const PropertiesView: React.FC = () => {
     city: '',
     state: '',
     description: '',
+    status: 'available' as 'available' | 'sold' | 'rented' | 'under_negotiation',
     amenities: [] as string[],
     images: [] as File[]
   });
@@ -58,23 +62,13 @@ const PropertiesView: React.FC = () => {
 
   // Note: Mock data removed - using real backend data only
 
-  // Fetch properties on component mount
-  useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
       const response = await apiClient.getProperties();
-      // Transform API properties to match frontend Property type
-      const transformedProperties = (response.data || []).map(prop => ({
-        ...prop,
-        images: [], // Backend doesn't return images yet
-        owner_id: prop.broker_id // Use broker_id as owner_id for now
-      }));
+      const transformedProperties = (response.data || []).map(transformApiProperty);
       setRealProperties(transformedProperties);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch properties';
@@ -84,7 +78,12 @@ const PropertiesView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch properties on component mount
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
 
   // Use only real properties from backend
   const properties = realProperties;
@@ -121,6 +120,93 @@ const PropertiesView: React.FC = () => {
     }).format(price);
     
     return listingType === 'rent' ? `${formattedPrice}/month` : formattedPrice;
+  };
+
+  function transformApiProperty(property: any): Property {
+    return {
+      ...property,
+      images: property.images || [],
+      owner_id: property.owner_id || property.broker_id
+    };
+  }
+
+  const resetPropertyForm = () => {
+    setFormData({
+      title: '',
+      type: 'apartment',
+      listingType: 'sale',
+      price: '',
+      area: '',
+      bedrooms: '',
+      bathrooms: '',
+      location: '',
+      address: '',
+      city: '',
+      state: '',
+      description: '',
+      status: 'available',
+      amenities: [],
+      images: []
+    });
+    setSelectedAmenities([]);
+    setValidationErrors({});
+    setFormError(null);
+  };
+
+  const closePropertyForm = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setEditingProperty(null);
+    resetPropertyForm();
+  };
+
+  const openAddPropertyModal = () => {
+    resetPropertyForm();
+    setShowAddModal(true);
+  };
+
+  const openViewPropertyModal = async (property: Property) => {
+    try {
+      const response = await apiClient.getProperty(property.id);
+      setViewingProperty(response.data ? transformApiProperty(response.data) : property);
+    } catch (err) {
+      console.error('Error loading property details:', err);
+      setViewingProperty(property);
+    }
+  };
+
+  const openEditPropertyModal = async (property: Property) => {
+    try {
+      const response = await apiClient.getProperty(property.id);
+      const propertyDetails = response.data ? transformApiProperty(response.data) : property;
+
+      setEditingProperty(propertyDetails);
+      setFormData({
+        title: propertyDetails.title,
+        type: propertyDetails.type,
+        listingType: propertyDetails.listing_type,
+        price: String(propertyDetails.price),
+        area: String(propertyDetails.area),
+        bedrooms: propertyDetails.bedrooms ? String(propertyDetails.bedrooms) : '',
+        bathrooms: propertyDetails.bathrooms ? String(propertyDetails.bathrooms) : '',
+        location: propertyDetails.location,
+        address: propertyDetails.address,
+        city: propertyDetails.city,
+        state: propertyDetails.state,
+        description: propertyDetails.description,
+        status: propertyDetails.status,
+        amenities: propertyDetails.amenities || [],
+        images: []
+      });
+      setSelectedAmenities(propertyDetails.amenities || []);
+      setFormError(null);
+      setValidationErrors({});
+      setShowEditModal(true);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load property details';
+      setError(errorMessage);
+      console.error('Error loading property for edit:', err);
+    }
   };
 
   // Validation function
@@ -245,46 +331,28 @@ const PropertiesView: React.FC = () => {
         propertyData.bathrooms = parseInt(formData.bathrooms);
       }
 
-      // Call API to create property
-      const response = await apiClient.createProperty(propertyData);
+      const response = editingProperty
+        ? await apiClient.updateProperty(editingProperty.id, {
+            ...propertyData,
+            status: formData.status
+          } as UpdatePropertyRequest)
+        : await apiClient.createProperty(propertyData);
       
-      // Add new property to the beginning of the list with transformed data
       if (response.data) {
-        const newProperty: Property = {
-          ...response.data,
-          images: [], // Backend doesn't return images yet
-          owner_id: response.data.broker_id // Use broker_id as owner_id for now
-        };
-        setRealProperties([newProperty, ...realProperties]);
+        const savedProperty = transformApiProperty(response.data);
+        setRealProperties(editingProperty
+          ? realProperties.map(property => property.id === savedProperty.id ? savedProperty : property)
+          : [savedProperty, ...realProperties]
+        );
       }
       
-      // Show success message
-      setSuccessMessage('Property added successfully!');
+      setSuccessMessage(editingProperty ? 'Property updated successfully!' : 'Property added successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
       
-      // Reset form and close modal
-      setFormData({
-        title: '',
-        type: 'apartment',
-        listingType: 'sale',
-        price: '',
-        area: '',
-        bedrooms: '',
-        bathrooms: '',
-        location: '',
-        address: '',
-        city: '',
-        state: '',
-        description: '',
-        amenities: [],
-        images: []
-      });
-      setSelectedAmenities([]);
-      setValidationErrors({});
-      setShowAddModal(false);
+      closePropertyForm();
     } catch (err) {
       // Handle different types of errors
-      let errorMessage = 'Failed to create property';
+      let errorMessage = editingProperty ? 'Failed to update property' : 'Failed to create property';
       
       if (err instanceof Error) {
         // Check for network errors
@@ -350,7 +418,7 @@ const PropertiesView: React.FC = () => {
           <p className="text-gray-600 mt-1">Manage your property listings</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={openAddPropertyModal}
           className="mt-4 sm:mt-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
         >
           <Plus className="h-5 w-5 mr-2" />
@@ -488,11 +556,17 @@ const PropertiesView: React.FC = () => {
               </div>
 
               <div className="flex space-x-2">
-                <button className="flex-1 bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
+                <button
+                  onClick={() => openViewPropertyModal(property)}
+                  className="flex-1 bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center"
+                >
                   <Eye className="h-4 w-4 mr-2" />
                   View
                 </button>
-                <button className="flex-1 bg-gray-50 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center">
+                <button
+                  onClick={() => openEditPropertyModal(property)}
+                  className="flex-1 bg-gray-50 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center"
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </button>
@@ -519,7 +593,7 @@ const PropertiesView: React.FC = () => {
             }
           </p>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={openAddPropertyModal}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Add Property
@@ -527,19 +601,17 @@ const PropertiesView: React.FC = () => {
         </div>
       )}
 
-      {/* Add Property Modal */}
-      {showAddModal && (
+      {/* Add/Edit Property Modal */}
+      {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Add New Property</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {editingProperty ? 'Edit Property' : 'Add New Property'}
+                </h2>
                 <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setFormError(null);
-                    setValidationErrors({});
-                  }}
+                  onClick={closePropertyForm}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,6 +684,26 @@ const PropertiesView: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {editingProperty && (
+                  <div>
+                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="available">Available</option>
+                      <option value="sold">Sold</option>
+                      <option value="rented">Rented</option>
+                      <option value="under_negotiation">Under Negotiation</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Property Title */}
                 <div>
@@ -872,7 +964,9 @@ const PropertiesView: React.FC = () => {
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800">Error creating property</h3>
+                        <h3 className="text-sm font-medium text-red-800">
+                          {editingProperty ? 'Error updating property' : 'Error creating property'}
+                        </h3>
                         <p className="mt-1 text-sm text-red-700">{formError}</p>
                       </div>
                     </div>
@@ -883,11 +977,7 @@ const PropertiesView: React.FC = () => {
                 <div className="flex space-x-4 pt-6 border-t border-gray-200">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setFormError(null);
-                      setValidationErrors({});
-                    }}
+                    onClick={closePropertyForm}
                     className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors"
                     disabled={submitting}
                   >
@@ -904,14 +994,132 @@ const PropertiesView: React.FC = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Creating...
+                        {editingProperty ? 'Updating...' : 'Creating...'}
                       </>
                     ) : (
-                      'Add Property'
+                      editingProperty ? 'Update Property' : 'Add Property'
                     )}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Property Modal */}
+      {viewingProperty && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="relative">
+              <img
+                src={viewingProperty.images?.[0] || 'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg'}
+                alt={viewingProperty.title}
+                className="w-full h-64 object-cover"
+              />
+              <button
+                onClick={() => setViewingProperty(null)}
+                className="absolute top-4 right-4 bg-white text-gray-600 rounded-full p-2 shadow hover:text-gray-900"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{viewingProperty.title}</h2>
+                  <div className="mt-2 flex items-center text-gray-600">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    <span>{viewingProperty.location}, {viewingProperty.city}</span>
+                  </div>
+                </div>
+                <span className={`self-start px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(viewingProperty.status)}`}>
+                  {viewingProperty.status.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Price</p>
+                  <p className="font-semibold text-gray-900">{formatPrice(viewingProperty.price, viewingProperty.listing_type)}</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Area</p>
+                  <p className="font-semibold text-gray-900">{viewingProperty.area} sq ft</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Type</p>
+                  <p className="font-semibold text-gray-900 capitalize">{viewingProperty.type}</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Listing</p>
+                  <p className="font-semibold text-gray-900 capitalize">{viewingProperty.listing_type}</p>
+                </div>
+              </div>
+
+              {(viewingProperty.bedrooms || viewingProperty.bathrooms) && (
+                <div className="flex gap-6 text-gray-700">
+                  {viewingProperty.bedrooms && (
+                    <div className="flex items-center">
+                      <Bed className="h-5 w-5 mr-2 text-gray-500" />
+                      {viewingProperty.bedrooms} Bedrooms
+                    </div>
+                  )}
+                  {viewingProperty.bathrooms && (
+                    <div className="flex items-center">
+                      <Bath className="h-5 w-5 mr-2 text-gray-500" />
+                      {viewingProperty.bathrooms} Bathrooms
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Address</h3>
+                <p className="text-gray-700">{viewingProperty.address}</p>
+                <p className="text-gray-600">{viewingProperty.city}, {viewingProperty.state}</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                <p className="text-gray-700 whitespace-pre-line">{viewingProperty.description}</p>
+              </div>
+
+              {viewingProperty.amenities.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Amenities</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingProperty.amenities.map((amenity) => (
+                      <span key={amenity} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setViewingProperty(null)}
+                  className="bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    const property = viewingProperty;
+                    setViewingProperty(null);
+                    openEditPropertyModal(property);
+                  }}
+                  className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Property
+                </button>
+              </div>
             </div>
           </div>
         </div>

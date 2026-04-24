@@ -1,0 +1,4 @@
+./appointment_repository.go
+./client_repository.go
+./property_repository.go
+./user_repository.go

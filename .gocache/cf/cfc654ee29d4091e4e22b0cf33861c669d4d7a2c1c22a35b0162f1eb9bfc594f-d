@@ -1,0 +1,6 @@
+./appointment_handler.go
+./auth_handler.go
+./client_handler.go
+./property_handler.go
+./responses.go
+./upload_handler.go

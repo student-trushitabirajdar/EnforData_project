@@ -62,6 +62,10 @@ export interface CreatePropertyRequest {
   amenities: string[];
 }
 
+export interface UpdatePropertyRequest extends Partial<CreatePropertyRequest> {
+  status?: 'available' | 'sold' | 'rented' | 'under_negotiation';
+}
+
 export interface Property {
   id: string;
   title: string;
@@ -235,6 +239,17 @@ class ApiClient {
   async createProperty(propertyData: CreatePropertyRequest): Promise<ApiResponse<Property>> {
     return this.request<Property>('/properties', {
       method: 'POST',
+      body: JSON.stringify(propertyData),
+    });
+  }
+
+  async getProperty(id: string): Promise<ApiResponse<Property>> {
+    return this.request<Property>(`/properties/${id}`);
+  }
+
+  async updateProperty(id: string, propertyData: UpdatePropertyRequest): Promise<ApiResponse<Property>> {
+    return this.request<Property>(`/properties/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(propertyData),
     });
   }

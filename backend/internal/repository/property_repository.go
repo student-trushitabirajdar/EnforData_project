@@ -178,3 +178,49 @@ func (r *PropertyRepository) GetByID(id string) (*models.Property, error) {
 
 	return &property, nil
 }
+
+// Update modifies an existing property in the database.
+// The updated_at timestamp and denormalized appointment address are handled by database triggers.
+func (r *PropertyRepository) Update(property *models.Property) error {
+	query := `
+		UPDATE properties SET
+			title = $1, type = $2, listing_type = $3, price = $4, area = $5,
+			bedrooms = $6, bathrooms = $7, location = $8, address = $9, city = $10,
+			state = $11, description = $12, amenities = $13, status = $14
+		WHERE id = $15
+		RETURNING broker_name, broker_city, created_at, updated_at
+	`
+
+	err := r.db.QueryRow(
+		query,
+		property.Title,
+		property.Type,
+		property.ListingType,
+		property.Price,
+		property.Area,
+		property.Bedrooms,
+		property.Bathrooms,
+		property.Location,
+		property.Address,
+		property.City,
+		property.State,
+		property.Description,
+		pq.Array(property.Amenities),
+		property.Status,
+		property.ID,
+	).Scan(
+		&property.BrokerName,
+		&property.BrokerCity,
+		&property.CreatedAt,
+		&property.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("property not found")
+		}
+		return fmt.Errorf("failed to update property: %w", err)
+	}
+
+	return nil
+}

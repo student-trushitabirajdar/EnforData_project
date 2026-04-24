@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"enfor-data-backend/internal/models"
 	"enfor-data-backend/internal/services"
@@ -110,6 +111,103 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, SuccessResponse{
 		Message: "Property created successfully",
+		Data:    property,
+	})
+}
+
+// GetProperty handles GET /api/properties/:id - retrieves a specific property
+func (h *PropertyHandler) GetProperty(c *gin.Context) {
+	brokerID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:   "Unauthorized",
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	propertyID := c.Param("id")
+
+	property, err := h.propertyService.GetPropertyByID(propertyID, brokerID.(string))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error:   "Not found",
+				Message: "Property not found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "Internal server error",
+			Message: "Failed to retrieve property",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse{
+		Message: "Property retrieved successfully",
+		Data:    property,
+	})
+}
+
+// UpdateProperty handles PUT /api/properties/:id - updates a specific property
+func (h *PropertyHandler) UpdateProperty(c *gin.Context) {
+	brokerID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:   "Unauthorized",
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	propertyID := c.Param("id")
+
+	var req models.UpdatePropertyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "Invalid request body",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "Validation failed",
+			Message: formatValidationErrors(err),
+		})
+		return
+	}
+
+	property, err := h.propertyService.UpdateProperty(propertyID, &req, brokerID.(string))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error:   "Not found",
+				Message: "Property not found",
+			})
+			return
+		}
+
+		if strings.Contains(err.Error(), "bedrooms") || strings.Contains(err.Error(), "bathrooms") {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "Validation failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "Internal server error",
+			Message: "Failed to update property",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse{
+		Message: "Property updated successfully",
 		Data:    property,
 	})
 }

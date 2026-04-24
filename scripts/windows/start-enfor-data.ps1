@@ -14,17 +14,17 @@ function Write-Status {
 
 function Write-Success {
     param($Message)
-    Write-Host "✅ $Message" -ForegroundColor Green
+    Write-Host "[OK] $Message" -ForegroundColor Green
 }
 
 function Write-Warning {
     param($Message)
-    Write-Host "⚠️  $Message" -ForegroundColor Yellow
+    Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
 function Write-Error {
     param($Message)
-    Write-Host "❌ $Message" -ForegroundColor Red
+    Write-Host "[ERROR] $Message" -ForegroundColor Red
 }
 
 # Function to check if a command exists
@@ -415,7 +415,7 @@ function Start-EnforData {
     # Run setup automatically if needed or requested
     if ($Setup -or $needsSetup) {
         Write-Host ""
-        Write-Status "🔧 Setup required - installing missing dependencies..."
+        Write-Status "Setup required - installing missing dependencies..."
         Write-Host ""
         
         # Check for admin rights
@@ -750,17 +750,17 @@ ENVIRONMENT=development
     Write-Host ""
     
     # Display status
-    Write-Status "🎉 ENFOR DATA Platform is now running on Windows!"
+    Write-Status "ENFOR DATA Platform is now running on Windows!"
     Write-Host ""
-    Write-Host "📊 Backend API:     http://localhost:8080" -ForegroundColor Green
-    Write-Host "🌐 Frontend Web:    $frontendUrl" -ForegroundColor Green
+    Write-Host "Backend API:        http://localhost:8080" -ForegroundColor Green
+    Write-Host "Frontend Web:       $frontendUrl" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📋 Demo Login Credentials:" -ForegroundColor Blue
+    Write-Host "Demo Login Credentials:" -ForegroundColor Blue
     Write-Host "   Broker:          broker@example.com / password123"
     Write-Host "   Channel Partner: builder@example.com / password123"
     Write-Host "   Admin:           admin@example.com / password123"
     Write-Host ""
-    Write-Host "🛑 To stop servers:" -ForegroundColor Yellow
+    Write-Host "To stop servers:" -ForegroundColor Yellow
     Write-Host "   .\stop-enfor-data.ps1"
     Write-Host ""
     

@@ -81,6 +81,105 @@ func (s *PropertyService) GetBrokerProperties(brokerID string) ([]models.Propert
 	return properties, nil
 }
 
+// GetPropertyByID retrieves a property by ID with ownership verification
+func (s *PropertyService) GetPropertyByID(id, brokerID string) (*models.Property, error) {
+	property, err := s.propertyRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if property.BrokerID != brokerID {
+		return nil, fmt.Errorf("property not found")
+	}
+
+	return property, nil
+}
+
+// UpdateProperty updates a property with ownership verification and validation
+func (s *PropertyService) UpdateProperty(id string, req *models.UpdatePropertyRequest, brokerID string) (*models.Property, error) {
+	property, err := s.GetPropertyByID(id, brokerID)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedType := property.Type
+	if req.Type != nil {
+		updatedType = *req.Type
+	}
+
+	updatedBedrooms := property.Bedrooms
+	if req.Bedrooms != nil {
+		updatedBedrooms = req.Bedrooms
+	}
+
+	updatedBathrooms := property.Bathrooms
+	if req.Bathrooms != nil {
+		updatedBathrooms = req.Bathrooms
+	}
+
+	validationReq := &models.CreatePropertyRequest{
+		Type:      updatedType,
+		Bedrooms:  updatedBedrooms,
+		Bathrooms: updatedBathrooms,
+	}
+	if err := s.validatePropertyTypeRequirements(validationReq); err != nil {
+		return nil, err
+	}
+
+	if req.Title != nil {
+		property.Title = *req.Title
+	}
+	if req.Type != nil {
+		property.Type = *req.Type
+	}
+	if req.ListingType != nil {
+		property.ListingType = *req.ListingType
+	}
+	if req.Price != nil {
+		property.Price = *req.Price
+	}
+	if req.Area != nil {
+		property.Area = *req.Area
+	}
+	if req.Bedrooms != nil {
+		property.Bedrooms = req.Bedrooms
+	}
+	if req.Bathrooms != nil {
+		property.Bathrooms = req.Bathrooms
+	}
+	if req.Location != nil {
+		property.Location = *req.Location
+	}
+	if req.Address != nil {
+		property.Address = *req.Address
+	}
+	if req.City != nil {
+		property.City = *req.City
+	}
+	if req.State != nil {
+		property.State = *req.State
+	}
+	if req.Description != nil {
+		property.Description = *req.Description
+	}
+	if req.Amenities != nil {
+		property.Amenities = req.Amenities
+	}
+	if req.Status != nil {
+		property.Status = *req.Status
+	}
+
+	if property.Amenities == nil {
+		property.Amenities = []string{}
+	}
+
+	if err := s.propertyRepo.Update(property); err != nil {
+		return nil, fmt.Errorf("failed to update property: %w", err)
+	}
+
+	return property, nil
+}
+
 // validatePropertyTypeRequirements validates type-specific requirements
 func (s *PropertyService) validatePropertyTypeRequirements(req *models.CreatePropertyRequest) error {
 	// For apartments and houses, bedrooms and bathrooms are required

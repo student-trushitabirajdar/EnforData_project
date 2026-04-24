@@ -97,6 +97,8 @@ func main() {
 			// Property routes (accessible to all authenticated users)
 			protected.GET("/properties", propertyHandler.GetProperties)
 			protected.POST("/properties", propertyHandler.CreateProperty)
+			protected.GET("/properties/:id", propertyHandler.GetProperty)
+			protected.PUT("/properties/:id", propertyHandler.UpdateProperty)
 
 			// Client routes (accessible to all authenticated users)
 			protected.GET("/clients", clientHandler.GetClients)

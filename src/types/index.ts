@@ -32,6 +32,8 @@ export interface Property {
   status: 'available' | 'sold' | 'rented' | 'under_negotiation';
   owner_id: string;
   broker_id: string;
+  broker_name?: string;
+  broker_city?: string;
   created_at: string;
   updated_at: string;
 }
